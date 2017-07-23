@@ -5,15 +5,7 @@ import Html.Attributes exposing (contenteditable, property)
 import Html.Events exposing (on, onBlur, onFocus)
 import Json.Decode as Decode
 import Json.Encode as Encode
-
-
-main : Program Never Model Msg
-main =
-    Html.beginnerProgram
-        { model = create "Test"
-        , update = update
-        , view = viewBoth
-        }
+import Util
 
 
 type alias Model =
@@ -58,13 +50,9 @@ view styles model =
         []
 
 
-viewBoth : Model -> Html.Html Msg
-viewBoth model =
-    Html.div
-        []
-        [ view [] model
-        , Html.text ("live: " ++ model.liveContent ++ " (not live: " ++ model.content ++ ")")
-        ]
+tightView : Model -> Html.Html Model
+tightView =
+    Util.tightHtml update (view [])
 
 
 innerHtmlDecoder : Decode.Decoder String

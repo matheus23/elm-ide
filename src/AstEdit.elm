@@ -1,5 +1,6 @@
 module AstEdit exposing (..)
 
+import ContentEditable as ContentEditable
 import Element as Element exposing (Element)
 import Html exposing (Html)
 import Styles exposing (..)
