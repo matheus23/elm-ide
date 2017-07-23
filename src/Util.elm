@@ -6,6 +6,10 @@ import Focus exposing (..)
 import Html exposing (Html)
 
 
+type alias FieldSetter record field =
+    Setter record record field field
+
+
 fst : Setter ( a, c ) ( b, c ) a b
 fst f ( x, y ) =
     ( f x, y )
@@ -26,6 +30,28 @@ index index f list =
                 elem
     in
     List.indexedMap applyAtIndex list
+
+
+orTry : Maybe a -> Maybe a -> Maybe a
+orTry maybe1 maybe2 =
+    case maybe1 of
+        Just x ->
+            Just x
+
+        Nothing ->
+            maybe2
+
+
+getIndex : Int -> List a -> Maybe a
+getIndex i =
+    let
+        justOnEqual index =
+            if index == i then
+                Just
+            else
+                always Nothing
+    in
+    List.foldr orTry Nothing << List.indexedMap justOnEqual
 
 
 tightHtml : (msg -> model -> model) -> (model -> Html msg) -> model -> Html model
@@ -95,3 +121,8 @@ vcenter style elem =
 centeredElement : style -> Element style variation model -> Element style variation model
 centeredElement style elem =
     hcenter style (vcenter style elem)
+
+
+isJust : Maybe a -> Bool
+isJust =
+    Maybe.withDefault False << Maybe.map (always True)

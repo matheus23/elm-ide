@@ -2,16 +2,16 @@ module Main exposing (..)
 
 import AstEdit exposing (..)
 import Element exposing (Element)
-import Element.Attributes as Element
 import Html exposing (Html)
+import Html5.DragDrop as DragDrop
 import Styles exposing (..)
-import Util
 
 
 init : ( Model, Cmd msg )
 init =
     { name = name "append"
     , args = [ ( var "arg1", Int ), ( var "arg2", Int ) ]
+    , dragDrop = DragDrop.init
     }
         ! []
 
