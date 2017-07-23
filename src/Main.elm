@@ -1,37 +1,24 @@
 module Main exposing (..)
 
 import AstEdit exposing (..)
-import ContentEditable
-import Element as Element exposing (Element)
+import Element exposing (Element)
+import Element.Attributes as Element
 import Html exposing (Html)
 import Styles exposing (..)
-
-
-type alias Model =
-    Function
-
-
-type alias Msg =
-    Function
+import Util
 
 
 init : ( Model, Cmd msg )
 init =
-    { name = ContentEditable.create "append", args = [] } ! []
+    { name = name "append"
+    , args = [ ( var "arg1", Int ), ( var "arg2", Int ) ]
+    }
+        ! []
 
 
-update : Msg -> Model -> ( Model, Cmd msg )
-update newModel model =
-    newModel ! []
-
-
-view : Model -> Element Styles Variations Msg
-view model =
-    Element.column StdStyle
-        []
-        [ Element.textArea TextArea [] "lol"
-        , viewFunction model
-        ]
+updateCmd : Msg -> Model -> ( Model, Cmd msg )
+updateCmd msg model =
+    update msg model ! []
 
 
 viewElement : Model -> Html Msg
@@ -43,7 +30,7 @@ main : Program Never Model Msg
 main =
     Html.program
         { init = init
-        , update = update
+        , update = updateCmd
         , subscriptions = always Sub.none
         , view = viewElement
         }
