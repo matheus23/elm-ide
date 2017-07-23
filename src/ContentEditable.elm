@@ -1,8 +1,8 @@
 module ContentEditable exposing (..)
 
-import Html
-import Html.Attributes exposing (contenteditable, property)
-import Html.Events exposing (on, onBlur, onFocus)
+import Element exposing (Element)
+import Element.Attributes exposing (contenteditable, property)
+import Element.Events exposing (on, onBlur, onFocus)
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Util
@@ -34,25 +34,23 @@ update msg model =
             { model | content = model.liveContent }
 
 
-view : List (Html.Attribute Msg) -> Model -> Html.Html Msg
-view styles model =
-    Html.div
-        ([ contenteditable True
-         , on "input" (Decode.map UserInput innerHtmlDecoder)
-         , onBlur Blur
+view : style -> Model -> Element style variation Msg
+view style model =
+    Element.el style
+        [ contenteditable True
+        , on "input" (Decode.map UserInput innerHtmlDecoder)
+        , onBlur Blur
 
-         -- placing this here, instead of using Html.text
-         -- fixes a "cannot read property 'replaceData' of undefined"-error
-         , property "innerHTML" (Encode.string model.content)
-         ]
-            ++ styles
-        )
-        []
+        -- placing this here, instead of using Html.text
+        -- fixes a "cannot read property 'replaceData' of undefined"-error
+        , property "innerHTML" (Encode.string model.content)
+        ]
+        Element.empty
 
 
-tightView : Model -> Html.Html Model
-tightView =
-    Util.tightHtml update (view [])
+tightView : style -> Model -> Element style variation Model
+tightView style =
+    Util.tightElement update (view style)
 
 
 innerHtmlDecoder : Decode.Decoder String

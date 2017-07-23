@@ -2,7 +2,6 @@ module AstEdit exposing (..)
 
 import ContentEditable as ContentEditable
 import Element as Element exposing (Element)
-import Html exposing (Html)
 import Styles exposing (..)
 
 
@@ -19,7 +18,7 @@ type Type
 
 
 type alias Function =
-    { name : Name
+    { name : ContentEditable.Model
     , args : List ( Var, Type )
     }
 
@@ -33,4 +32,8 @@ viewFunction function =
 
 viewName : Function -> Element Styles Variations Function
 viewName model =
-    Element.inputText VarInput [] model.name
+    let
+        updateName str =
+            { model | name = str }
+    in
+    Element.map updateName (ContentEditable.tightView VarInput model.name)

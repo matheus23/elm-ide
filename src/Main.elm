@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import AstEdit exposing (..)
+import ContentEditable
 import Element as Element exposing (Element)
 import Html exposing (Html)
 import Styles exposing (..)
@@ -16,7 +17,7 @@ type alias Msg =
 
 init : ( Model, Cmd msg )
 init =
-    { name = "append", args = [] } ! []
+    { name = ContentEditable.create "append", args = [] } ! []
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
