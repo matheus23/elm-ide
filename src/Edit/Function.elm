@@ -1,8 +1,9 @@
-module AstEdit exposing (..)
+module Edit.Function exposing (..)
 
 import ContentEditable as ContentEditable
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
+import Element.Events as Events
 import Focus exposing (..)
 import Html5.DragDrop as DragDrop
 import Styles exposing (..)
@@ -13,44 +14,20 @@ type alias Name =
     ContentEditable.Model
 
 
-name : String -> Name
-name =
-    ContentEditable.create
-
-
-type alias Var =
+type alias ArgName =
     ContentEditable.Model
 
 
-var : String -> Var
-var =
-    ContentEditable.create
-
-
 type Type
-    = Int
+    = Hole
+    | Int
 
 
 type alias Model =
     { name : Name
-    , args : List ( Var, Type )
+    , args : List ( ArgName, Type )
     , dragDrop : DragDrop.Model Int Int
     }
-
-
-dragDrop : FieldSetter Model (DragDrop.Model Int Int)
-dragDrop f model =
-    { model | dragDrop = f model.dragDrop }
-
-
-functionName : FieldSetter Model Name
-functionName f model =
-    { model | name = f model.name }
-
-
-args : FieldSetter Model (List ( Var, Type ))
-args f model =
-    { model | args = f model.args }
 
 
 type Msg
@@ -58,6 +35,10 @@ type Msg
     | UpdateType Int Type
     | UpdateVar Int ContentEditable.Msg
     | DragDropMsg (DragDrop.Msg Int Int)
+
+
+
+-- Update
 
 
 update : Msg -> Model -> Model
@@ -107,6 +88,10 @@ applyDrop maybeDrop model =
             Maybe.withDefault model subst
 
 
+
+-- View
+
+
 view : Model -> Element Styles Variations Msg
 view model =
     let
@@ -122,25 +107,28 @@ view model =
         hasType =
             Util.styledText Keyword ":"
 
-        dragId =
-            Debug.log "dragId" ( DragDrop.getDragId model.dragDrop, DragDrop.getDropId model.dragDrop )
+        equalsSign =
+            Util.styledTextAttr Keyword [ paddingLeft 4, alignBottom ] "="
     in
-    Element.row NoStyle [ spacing 10, padding 5 ] (viewName model :: hasType :: args)
+    Element.row NoStyle [ spacing 10, padding 5 ] (viewName model :: hasType :: args ++ [ equalsSign ])
 
 
-viewArgs : DragDrop.Model Int Int -> List ( Var, Type ) -> List (Element Styles Variations Msg)
+viewArgs : DragDrop.Model Int Int -> List ( ArgName, Type ) -> List (Element Styles Variations Msg)
 viewArgs dragModel args =
     List.indexedMap (viewArg dragModel) args
 
 
-viewArg : DragDrop.Model Int Int -> Int -> ( Var, Type ) -> Element Styles Variations Msg
-viewArg dragModel index ( var, typ ) =
+viewArg : DragDrop.Model Int Int -> Int -> ( ArgName, Type ) -> Element Styles Variations Msg
+viewArg dragModel index ( argName, typ ) =
     let
-        draggableAttributes =
-            DragDrop.draggableElement DragDropMsg index
-
         isDragging =
             Util.isJust (DragDrop.getDragId dragModel)
+
+        draggableAttributes =
+            if not isDragging then
+                DragDrop.draggableElement DragDropMsg index
+            else
+                []
 
         isDraggedElem =
             Maybe.withDefault -1 (DragDrop.getDragId dragModel) == index
@@ -162,27 +150,67 @@ viewArg dragModel index ( var, typ ) =
             else if isDragging then
                 Droppable
             else
-                NoStyle
+                Draggable
     in
     Element.column style
-        ([ spacing 4 ] ++ draggableAttributes ++ droppableAttributes)
-        [ viewType index typ, viewVar index var ]
+        ([ spacing 2 ] ++ draggableAttributes ++ droppableAttributes)
+        [ viewType index typ, viewArgName index argName ]
 
 
 viewType : Int -> Type -> Element Styles Variations Msg
 viewType index typ =
-    Util.styledText Identifier (toString typ)
+    case typ of
+        Hole ->
+            Element.el TypeHole
+                [ center, paddingXY 4 0, Events.onClick (UpdateType index Int) ]
+                (Util.styledText TypeHoleText "?")
+
+        Int ->
+            Util.styledTextAttr Identifier [ center ] "Int"
 
 
-viewVar : Int -> Var -> Element Styles Variations Msg
-viewVar index var =
-    Element.map (UpdateVar index) (ContentEditable.view Identifier var)
+viewArgName : Int -> ArgName -> Element Styles Variations Msg
+viewArgName index argName =
+    Element.map (UpdateVar index) (ContentEditable.view Identifier argName)
 
 
 viewName : Model -> Element Styles Variations Msg
 viewName model =
     Element.column NoStyle
-        [ spacing 4 ]
+        [ spacing 5 ]
         [ Element.map UpdateName (ContentEditable.view Identifier model.name)
         , Util.styledText Identifier model.name.liveContent
         ]
+
+
+
+-- Smart Constructors
+
+
+argName : String -> ArgName
+argName =
+    ContentEditable.create
+
+
+name : String -> Name
+name =
+    ContentEditable.create
+
+
+
+-- Lenses
+
+
+dragDrop : FieldSetter Model (DragDrop.Model Int Int)
+dragDrop f model =
+    { model | dragDrop = f model.dragDrop }
+
+
+functionName : FieldSetter Model Name
+functionName f model =
+    { model | name = f model.name }
+
+
+args : FieldSetter Model (List ( ArgName, Type ))
+args f model =
+    { model | args = f model.args }

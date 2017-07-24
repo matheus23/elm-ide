@@ -103,22 +103,27 @@ elementList view models =
     List.indexedMap viewModel models
 
 
-styledText : style -> String -> Element style variation model
+styledText : style -> String -> Element style variation msg
 styledText style text =
     Element.el style [] (Element.text text)
 
 
-hcenter : style -> Element style variation model -> Element style variation model
+styledTextAttr : style -> List (Element.Attribute variation msg) -> String -> Element style variation msg
+styledTextAttr style attributes text =
+    Element.el style attributes (Element.text text)
+
+
+hcenter : style -> Element style variation msg -> Element style variation msg
 hcenter style elem =
     Element.row style [ center ] [ elem ]
 
 
-vcenter : style -> Element style variation model -> Element style variation model
+vcenter : style -> Element style variation msg -> Element style variation msg
 vcenter style elem =
     Element.column style [ center ] [ elem ]
 
 
-centeredElement : style -> Element style variation model -> Element style variation model
+centeredElement : style -> Element style variation msg -> Element style variation msg
 centeredElement style elem =
     hcenter style (vcenter style elem)
 
