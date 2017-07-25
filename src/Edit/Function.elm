@@ -20,6 +20,7 @@ type alias ArgName =
 
 type Type
     = Hole
+    | SelectType
     | Int
 
 
@@ -162,11 +163,38 @@ viewType index typ =
     case typ of
         Hole ->
             Element.el TypeHole
-                [ center, paddingXY 4 0, Events.onClick (UpdateType index Int) ]
+                [ center, paddingXY 4 0, Events.onClick (UpdateType index SelectType) ]
                 (Util.styledText TypeHoleText "?")
 
         Int ->
             Util.styledTextAttr Identifier [ center ] "Int"
+
+        SelectType ->
+            let
+                parseOption str =
+                    case str of
+                        "hole" ->
+                            UpdateType index Hole
+
+                        "int" ->
+                            UpdateType index Int
+
+                        _ ->
+                            UpdateType index SelectType
+            in
+            Element.select "Select type"
+                Identifier
+                [ Events.onInput parseOption ]
+                [ Element.option "hole"
+                    True
+                    (Element.el TypeHole
+                        [ center, paddingXY 4 0 ]
+                        (Util.styledText TypeHoleText "?")
+                    )
+                , Element.option "int"
+                    False
+                    (Util.styledText Identifier "Int")
+                ]
 
 
 viewArgName : Int -> ArgName -> Element Styles Variations Msg
