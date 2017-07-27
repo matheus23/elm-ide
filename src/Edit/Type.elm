@@ -161,7 +161,7 @@ renderRecord events renderAssoc associations =
             Util.styledText Keyword "}"
 
         assocsRendered =
-            List.indexedMap (\index association -> renderAssoc index association) associations
+            List.indexedMap renderAssoc associations
     in
     Element.row NoStyle
         ([ spacing 10 ] ++ events)
