@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import Edit.Function as Function
+import Edit.Type as Type
 import Element exposing (Element)
 import Html exposing (Html)
 import Html5.DragDrop as DragDrop
@@ -10,7 +11,13 @@ import Styles exposing (..)
 init : ( Function.Model, Cmd msg )
 init =
     { name = Function.name "append"
-    , args = [ ( Function.argName "arg1", Function.Hole False ), ( Function.argName "arg2", Function.Hole False ) ]
+    , args =
+        [ ( Function.argName "arg1", Type.hole )
+        , ( Function.argName "arg2", Type.hole )
+        , ( Function.argName "record"
+          , Type.recordType [ ( "key", Type.Int ) ]
+          )
+        ]
     , dragDrop = DragDrop.init
     }
         ! []
