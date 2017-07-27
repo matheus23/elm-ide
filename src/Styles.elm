@@ -13,10 +13,15 @@ type alias Variations =
 
 type Styles
     = NoStyle
+      -- text
     | Keyword
     | Identifier
+      -- types
     | TypeHole
     | TypeHoleText
+    | TypeOption
+    | TypeOptionList
+      -- drag and drop
     | Draggable
     | Droppable
     | Dragged
@@ -38,6 +43,8 @@ stylesheet =
             [ Font.typeface [ "Lucida Console", "Courier New" ]
             , Color.text (Color.rgb 30 30 30)
             ]
+
+        -- Type styles
         , style TypeHoleText
             [ Font.typeface [ "Lucida Console", "Courier New" ]
             , Color.text Color.darkGrey
@@ -45,6 +52,14 @@ stylesheet =
         , style TypeHole
             [ Border.all 1
             , Color.border Color.darkGrey
+            ]
+        , style TypeOption
+            [ Style.prop "z-index" "2"
+            , hover [ Color.background (Color.rgb 200 230 255) ]
+            ]
+        , style TypeOptionList
+            [ Color.background Color.lightGray
+            , Style.prop "z-index" "1"
             ]
 
         -- Drag Drop styles

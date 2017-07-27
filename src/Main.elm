@@ -10,7 +10,7 @@ import Styles exposing (..)
 init : ( Function.Model, Cmd msg )
 init =
     { name = Function.name "append"
-    , args = [ ( Function.argName "arg1", Function.Hole ), ( Function.argName "arg2", Function.Hole ) ]
+    , args = [ ( Function.argName "arg1", Function.Hole False ), ( Function.argName "arg2", Function.Hole False ) ]
     , dragDrop = DragDrop.init
     }
         ! []

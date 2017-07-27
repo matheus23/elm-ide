@@ -19,9 +19,9 @@ type alias ArgName =
 
 
 type Type
-    = Hole
-    | SelectType
+    = Hole Bool
     | Int
+    | Record (List ( Name, Type ))
 
 
 type alias Model =
@@ -34,11 +34,14 @@ type alias Model =
 type Msg
     = UpdateName ContentEditable.Msg
     | UpdateType Int Type
+    | UpdateRecordTypeName Int ContentEditable.Msg
+    | UpdateRecordType Int Msg -- this is shit
     | UpdateVar Int ContentEditable.Msg
     | DragDropMsg (DragDrop.Msg Int Int)
 
 
 
+-- TODO: Extract Edit.Type module so that it has its own Msgs.!!!!!!!!!!!!!
 -- Update
 
 
@@ -161,40 +164,78 @@ viewArg dragModel index ( argName, typ ) =
 viewType : Int -> Type -> Element Styles Variations Msg
 viewType index typ =
     case typ of
-        Hole ->
-            Element.el TypeHole
-                [ center, paddingXY 4 0, Events.onClick (UpdateType index SelectType) ]
-                (Util.styledText TypeHoleText "?")
+        Hole focused ->
+            let
+                typeHoleElement =
+                    renderTypeHole
+                        [ Events.onBlur (UpdateType index (Hole False))
+                        , Events.onFocus (UpdateType index (Hole True))
+                        ]
+            in
+            if focused then
+                typeHoleElement
+                    |> Element.below
+                        [ renderTypeOptionList
+                            [ renderTypeInt [ Events.onClick (UpdateType index Int) ]
+                            , renderTypeHole [ Events.onClick (UpdateType index (Hole True)) ]
+                            ]
+                        ]
+            else
+                typeHoleElement
 
         Int ->
-            Util.styledTextAttr Identifier [ center ] "Int"
+            renderTypeInt []
 
-        SelectType ->
+        Record nameTypePairs ->
             let
-                parseOption str =
-                    case str of
-                        "hole" ->
-                            UpdateType index Hole
+                openBracket =
+                    Util.styledText Keyword "{"
 
-                        "int" ->
-                            UpdateType index Int
-
-                        _ ->
-                            UpdateType index SelectType
+                closingBracket =
+                    Util.styledText Keyword "}"
             in
-            Element.select "Select type"
-                Identifier
-                [ Events.onInput parseOption ]
-                [ Element.option "hole"
-                    True
-                    (Element.el TypeHole
-                        [ center, paddingXY 4 0 ]
-                        (Util.styledText TypeHoleText "?")
-                    )
-                , Element.option "int"
-                    False
-                    (Util.styledText Identifier "Int")
-                ]
+            Element.row NoStyle
+                [ spacing 10 ]
+                ([ openBracket ] ++ List.map viewNameTypePair nameTypePairs ++ [ closingBracket ])
+
+
+renderTypeHole : List (Element.Attribute Variations Msg) -> Element Styles Variations Msg
+renderTypeHole events =
+    Element.el TypeHole
+        ([ center
+         , paddingXY 4 0
+         , tabindex 0
+         ]
+            ++ events
+        )
+        (Util.styledText TypeHoleText "?")
+
+
+renderTypeInt : List (Element.Attribute Variations Msg) -> Element Styles Variations Msg
+renderTypeInt events =
+    Util.styledTextAttr Identifier ([ center ] ++ events) "Int"
+
+
+renderTypeOption : Element Styles Variations Msg -> Element Styles Variations Msg
+renderTypeOption =
+    Element.el TypeOption [ padding 4 ]
+
+
+renderTypeOptionList : List (Element Styles Variations Msg) -> Element Styles Variations Msg
+renderTypeOptionList options =
+    Element.column TypeOptionList
+        [ spacing 2 ]
+        (List.map renderTypeOption options)
+
+
+viewNameTypePair : Int -> ( Name, Type ) -> Element Styles Variations Msg
+viewNameTypePair index ( name, typ ) =
+    Element.row NoStyle
+        [ spacing 10 ]
+        [ Element.map (UpdateRecordTypeName index) (ContentEditable.view Identifier name)
+        , Util.styledText Keyword ":"
+        , Element.map (UpdateRecordType index) (viewType typ)
+        ]
 
 
 viewArgName : Int -> ArgName -> Element Styles Variations Msg
