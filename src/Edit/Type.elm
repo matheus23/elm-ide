@@ -104,7 +104,7 @@ view typ =
 
 viewRecord : Associations -> Element Styles Variations Msg
 viewRecord =
-    renderRecord [] viewAssociation
+    renderRecord [] (\index -> viewAssociation index)
 
 
 viewAssociation : Int -> ( RecordKey, Model ) -> Element Styles Variations Msg
