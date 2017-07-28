@@ -32,7 +32,7 @@ type alias Model a =
 type Msg innerMsg
     = UpdateKey Int ContentEditable.Msg
     | UpdateValue Int innerMsg
-    | UpdateFocus Int Bool
+    | SetFocus Int Bool
 
 
 
@@ -48,7 +48,7 @@ update updateInner msg model =
         UpdateValue index innerMsg ->
             model & associations => Util.index index => value $= updateInner innerMsg
 
-        UpdateFocus index focus ->
+        SetFocus index focus ->
             model & associations => Util.index index => focused .= focus
 
 
@@ -70,8 +70,14 @@ viewAssociation :
     -> Association innerModel
     -> Element Styles Variations (Msg innerMsg)
 viewAssociation viewInner index =
-    -- TODO: Implement UpdateFocus HERE
-    renderAssociation []
+    let
+        attributes =
+            [ Events.onBlur (SetFocus index False)
+            , Events.onFocus (SetFocus index True)
+            , tabindex 0
+            ]
+    in
+    renderAssociation attributes
         (Element.map (UpdateKey index) << ContentEditable.view Identifier)
         (Element.map (UpdateValue index) << viewInner)
         index
