@@ -43,7 +43,7 @@ view style model =
 
         -- placing this here, instead of using Html.text
         -- fixes a "cannot read property 'replaceData' of undefined"-error
-        , property "innerHTML" (Encode.string model.content)
+        , property "innerText" (Encode.string model.content)
         ]
         Element.empty
 
