@@ -1,6 +1,6 @@
 module Edit.Type exposing (..)
 
-import ContentEditable as ContentEditable
+import Edit.Record as Record
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
@@ -12,37 +12,16 @@ import Util exposing (FieldSetter)
 -- Model
 
 
-type alias Associations =
-    List Association
-
-
-type alias Association =
-    ( RecordKey, Model )
-
-
-type alias RecordKey =
-    ContentEditable.Model
-
-
-type alias RecordOf a =
-    { associations : List ( RecordKey, a )
-    , oneline : Bool
-    , focused : Bool
-    }
-
-
 type Model
     = Hole Bool
     | Int
-    | RecordType (RecordOf Model)
+    | RecordType Bool (Record.Model Model)
 
 
 type Msg
     = Replace Model
-    | UpdateRecordKey Int ContentEditable.Msg
-    | UpdateRecord Int Msg
-    | Blur
-    | Focus
+    | UpdateRecord (Record.Msg Msg)
+    | SetFocus Bool
 
 
 
@@ -55,33 +34,17 @@ update msg model =
         Replace newModel ->
             newModel
 
-        UpdateRecord index innerMsg ->
-            model
-                & record
-                => associations
-                => Util.index index
-                => Util.snd
-                $= update innerMsg
+        UpdateRecord recordMsg ->
+            model & record $= Record.update update recordMsg
 
-        UpdateRecordKey index contentEditableMsg ->
-            model
-                & record
-                => associations
-                => Util.index index
-                => Util.fst
-                $= ContentEditable.update contentEditableMsg
-
-        Blur ->
-            model & typeFocused .= False
-
-        Focus ->
-            model & typeFocused .= True
+        SetFocus focus ->
+            model & typeFocused .= focus
 
 
 focusableAttributes : List (Element.Attribute Variations Msg)
 focusableAttributes =
-    [ Events.onBlur Blur
-    , Events.onFocus Focus
+    [ Events.onBlur (SetFocus False)
+    , Events.onFocus (SetFocus True)
     , tabindex 0 -- makes the element focusable
     ]
 
@@ -110,21 +73,14 @@ view typ =
         Int ->
             renderTypeInt []
 
-        RecordType record ->
-            viewRecord record
-
-
-viewRecord : RecordOf Model -> Element Styles Variations Msg
-viewRecord =
-    renderRecord focusableAttributes (\index -> viewAssociation index)
-
-
-viewAssociation : Int -> ( RecordKey, Model ) -> Element Styles Variations Msg
-viewAssociation index =
-    renderAssociation
-        (Element.map (UpdateRecordKey index) << ContentEditable.view Identifier)
-        (Element.map (UpdateRecord index) << view)
-        index
+        RecordType focused record ->
+            Element.map UpdateRecord
+                (Record.view view record
+                    |> Element.below
+                        [ Element.when focused
+                            (Element.text "focused")
+                        ]
+                )
 
 
 viewTypeOption : Model -> Element Styles Variations Msg
@@ -133,7 +89,7 @@ viewTypeOption typ =
         [ padding 4
         , Events.onClick (Replace typ)
         ]
-        (plainType typ)
+        (plain typ)
 
 
 viewTypeOptionList : List Model -> Element Styles Variations Msg
@@ -163,68 +119,12 @@ renderTypeInt events =
     Util.styledTextAttr Identifier ([ center ] ++ events) "Int"
 
 
-renderRecord :
-    List (Element.Attribute Variations msg)
-    -> (Int -> Association -> Element Styles Variations msg)
-    -> RecordOf Model
-    -> Element Styles Variations msg
-renderRecord events renderAssoc record =
-    let
-        closingBracket =
-            Util.styledTextAttr Keyword lastBrackedPadding "}"
-
-        lastBrackedPadding =
-            if record.oneline then
-                [ paddingLeft 10 ]
-            else
-                []
-
-        assocsRendered =
-            -- probably because of strictness, I have to eta abstract.........
-            List.indexedMap (\index -> renderAssoc index) record.associations
-
-        combineAssociations events =
-            if record.oneline then
-                Element.row NoStyle events
-            else
-                Element.column NoStyle ([ spacing 4 ] ++ events)
-    in
-    combineAssociations events
-        (assocsRendered ++ [ closingBracket ])
-
-
-renderAssociation :
-    (RecordKey -> Element Styles Variations msg)
-    -> (Model -> Element Styles Variations msg)
-    -> Int
-    -> Association
-    -> Element Styles Variations msg
-renderAssociation renderKey renderType index ( key, typ ) =
-    let
-        openBracket =
-            Util.styledText Keyword "{"
-
-        comma =
-            Util.styledText Keyword ","
-    in
-    Element.row NoStyle
-        [ spacing 10 ]
-        [ if index == 0 then
-            openBracket
-          else
-            comma
-        , renderKey key
-        , Util.styledText Keyword ":"
-        , renderType typ
-        ]
-
-
 
 -- render stuff plainly, i.e. deeply without any event handling (static images)
 
 
-plainType : Model -> Element Styles Variations msg
-plainType model =
+plain : Model -> Element Styles Variations msg
+plain model =
     case model of
         Hole focused ->
             plainHole
@@ -232,8 +132,8 @@ plainType model =
         Int ->
             plainInt
 
-        RecordType record ->
-            plainRecord record
+        RecordType focused record ->
+            Record.plain plain record
 
 
 plainHole : Element Styles Variations msg
@@ -244,22 +144,6 @@ plainHole =
 plainInt : Element Styles Variations msg
 plainInt =
     renderTypeInt []
-
-
-plainRecord : RecordOf Model -> Element Styles Variations msg
-plainRecord =
-    -- I have to eta abstract. I don't fucking know why.
-    renderRecord [] (\index -> plainAssociation index)
-
-
-plainAssociation : Int -> Association -> Element Styles Variations msg
-plainAssociation =
-    renderAssociation plainKey plainType
-
-
-plainKey : RecordKey -> Element Styles Variations msg
-plainKey key =
-    Util.styledText Identifier key.liveContent
 
 
 
@@ -273,11 +157,7 @@ hole =
 
 recordType : Bool -> List ( String, Model ) -> Model
 recordType oneline associations =
-    RecordType
-        { associations = List.map (Util.fst $= ContentEditable.create) associations
-        , oneline = oneline
-        , focused = False
-        }
+    RecordType False (Record.model oneline associations)
 
 
 
@@ -286,19 +166,14 @@ recordType oneline associations =
 
 {-| Ignores any other cases than Records.
 -}
-record : FieldSetter Model (RecordOf Model)
+record : FieldSetter Model (Record.Model Model)
 record f model =
     case model of
-        RecordType record ->
-            RecordType (f record)
+        RecordType focused record ->
+            RecordType focused (f record)
 
         _ ->
             model
-
-
-associations : FieldSetter (RecordOf a) (List ( RecordKey, a ))
-associations f record =
-    { record | associations = f record.associations }
 
 
 typeFocused : FieldSetter Model Bool
@@ -307,8 +182,8 @@ typeFocused f model =
         Hole focused ->
             Hole (f focused)
 
-        RecordType record ->
-            RecordType { record | focused = f record.focused }
+        RecordType focused record ->
+            RecordType (f focused) record
 
         _ ->
             model
