@@ -115,7 +115,7 @@ renderTypeInt events =
 
 
 
--- render stuff plainly, i.e. deeply without any event handling (static images)
+-- render stuff plainly, i.e. deeply without any event handling (like static images)
 
 
 plain : Model -> Element Styles Variations msg
@@ -171,7 +171,7 @@ recordType oneline associations =
 -- Lenses
 
 
-{-| Ignores any other cases than Records.
+{-| Ignores all cases except for Records.
 -}
 record : FieldSetter Model (Record.Model Model)
 record f model =
