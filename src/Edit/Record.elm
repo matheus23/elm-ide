@@ -5,6 +5,7 @@ import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
 import Focus exposing (..)
+import Focusable
 import Styles exposing (..)
 import Util exposing (FieldSetter)
 
@@ -17,10 +18,10 @@ type alias Key =
 
 
 type alias Association a =
-    { key : Key
-    , value : a
-    , focused : Bool
-    }
+    Focusable.Model
+        { key : Key
+        , value : a
+        }
 
 
 type alias Model a =
@@ -32,7 +33,7 @@ type alias Model a =
 type Msg innerMsg
     = UpdateKey Int ContentEditable.Msg
     | UpdateValue Int innerMsg
-    | SetFocus Int Bool
+    | UpdateFocus Int Focusable.Msg
 
 
 
@@ -43,13 +44,24 @@ update : (innerMsg -> innerModel -> innerModel) -> Msg innerMsg -> Model innerMo
 update updateInner msg model =
     case msg of
         UpdateKey index contentEditableMsg ->
-            model & associations => Util.index index => key $= ContentEditable.update contentEditableMsg
+            model
+                & associations
+                => Util.index index
+                => key
+                $= ContentEditable.update contentEditableMsg
 
         UpdateValue index innerMsg ->
-            model & associations => Util.index index => value $= updateInner innerMsg
+            model
+                & associations
+                => Util.index index
+                => value
+                $= updateInner innerMsg
 
-        SetFocus index focus ->
-            model & associations => Util.index index => focused .= focus
+        UpdateFocus index focusMsg ->
+            model
+                & associations
+                => Util.index index
+                $= Focusable.update focusMsg
 
 
 
@@ -70,14 +82,7 @@ viewAssociation :
     -> Association innerModel
     -> Element Styles Variations (Msg innerMsg)
 viewAssociation viewInner index =
-    let
-        attributes =
-            [ Events.onBlur (SetFocus index False)
-            , Events.onFocus (SetFocus index True)
-            , tabindex 0
-            ]
-    in
-    renderAssociation attributes
+    renderAssociation (Focusable.attributes (UpdateFocus index))
         (Element.map (UpdateKey index) << ContentEditable.view Identifier)
         (Element.map (UpdateValue index) << viewInner)
         index
@@ -184,11 +189,6 @@ key f association =
 value : FieldSetter (Association a) a
 value f association =
     { association | value = f association.value }
-
-
-focused : FieldSetter (Association a) Bool
-focused f association =
-    { association | focused = f association.focused }
 
 
 
