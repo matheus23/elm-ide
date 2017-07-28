@@ -73,7 +73,7 @@ view :
     -> Model innerModel
     -> Element Styles Variations (Msg innerMsg)
 view viewInner model =
-    render [] (\index -> viewAssociation viewInner index) model
+    render [] (viewAssociation viewInner) model
 
 
 viewAssociation :
@@ -109,8 +109,7 @@ render events renderAssoc record =
                 []
 
         assocsRendered =
-            -- probably because of strictness, I have to eta abstract.........
-            List.indexedMap (\index -> renderAssoc index) record.associations
+            List.indexedMap renderAssoc record.associations
 
         combineAssociations events =
             if record.oneline then
@@ -158,8 +157,7 @@ renderAssociation attributes renderKey renderType index association =
 
 plain : (innerModel -> Element Styles Variations msg) -> Model innerModel -> Element Styles Variations msg
 plain plainInner =
-    -- I have to eta abstract. I don't fucking know why.
-    render [] (\index -> plainAssociation plainInner index)
+    render [] (plainAssociation plainInner)
 
 
 plainAssociation : (innerModel -> Element Styles Variations msg) -> Int -> Association innerModel -> Element Styles Variations msg
