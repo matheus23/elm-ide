@@ -15,7 +15,7 @@ init =
         [ ( Function.argName "arg1", Type.hole )
         , ( Function.argName "arg2", Type.hole )
         , ( Function.argName "record"
-          , Type.recordType True [ ( "key", Type.Int ) ]
+          , Type.recordType True [ ( "key", Type.int ) ]
           )
         ]
     , dragDrop = DragDrop.init

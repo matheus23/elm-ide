@@ -5,6 +5,7 @@ import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
 import Focus exposing (..)
+import Focusable
 import Styles exposing (..)
 import Util exposing (FieldSetter)
 
@@ -12,16 +13,22 @@ import Util exposing (FieldSetter)
 -- Model
 
 
-type Model
-    = Hole Bool
+type alias Model =
+    Focusable.Model
+        { typeCase : TypeCase
+        }
+
+
+type TypeCase
+    = Hole
     | Int
-    | RecordType Bool (Record.Model Model)
+    | RecordType (Record.Model Model)
 
 
 type Msg
     = Replace Model
     | UpdateRecord (Record.Msg Msg)
-    | SetFocus Bool
+    | UpdateFocus Focusable.Msg
 
 
 
@@ -37,16 +44,8 @@ update msg model =
         UpdateRecord recordMsg ->
             model & record $= Record.update update recordMsg
 
-        SetFocus focus ->
-            model & typeFocused .= focus
-
-
-focusableAttributes : List (Element.Attribute Variations Msg)
-focusableAttributes =
-    [ Events.onBlur (SetFocus False)
-    , Events.onFocus (SetFocus True)
-    , tabindex 0 -- makes the element focusable
-    ]
+        UpdateFocus focusMsg ->
+            Focusable.update focusMsg model
 
 
 
@@ -54,18 +53,18 @@ focusableAttributes =
 
 
 view : Model -> Element Styles Variations Msg
-view typ =
-    case typ of
-        Hole focused ->
+view model =
+    case model.typeCase of
+        Hole ->
             renderTypeHole
-                focusableAttributes
+                (Focusable.attributes UpdateFocus)
                 |> Element.below
-                    [ Element.when focused <|
+                    [ Element.when model.focused <|
                         viewTypeOptionList
-                            [ Int
+                            [ int
                             , recordType False
                                 [ ( "key", hole )
-                                , ( "test", Int )
+                                , ( "test", int )
                                 ]
                             ]
                     ]
@@ -73,12 +72,9 @@ view typ =
         Int ->
             renderTypeInt []
 
-        RecordType focused record ->
-            Element.el NoStyle
-                [ Events.onFocus (SetFocus True)
-                , Events.onBlur (SetFocus False)
-                , tabindex 0
-                ]
+        RecordType record ->
+            Focusable.wrapFocusable NoStyle
+                UpdateFocus
                 (Element.map UpdateRecord (Record.view view record))
 
 
@@ -124,14 +120,14 @@ renderTypeInt events =
 
 plain : Model -> Element Styles Variations msg
 plain model =
-    case model of
-        Hole focused ->
+    case model.typeCase of
+        Hole ->
             plainHole
 
         Int ->
             plainInt
 
-        RecordType focused record ->
+        RecordType record ->
             Record.plain plain record
 
 
@@ -149,14 +145,26 @@ plainInt =
 -- Smart constructors
 
 
+fromCase : TypeCase -> Model
+fromCase typeCase =
+    { focused = False, typeCase = typeCase }
+
+
 hole : Model
 hole =
-    Hole False
+    fromCase Hole
+
+
+int : Model
+int =
+    fromCase Int
 
 
 recordType : Bool -> List ( String, Model ) -> Model
 recordType oneline associations =
-    RecordType False (Record.model oneline associations)
+    { focused = False
+    , typeCase = RecordType (Record.model oneline associations)
+    }
 
 
 
@@ -167,22 +175,14 @@ recordType oneline associations =
 -}
 record : FieldSetter Model (Record.Model Model)
 record f model =
-    case model of
-        RecordType focused record ->
-            RecordType focused (f record)
+    case model.typeCase of
+        RecordType record ->
+            model & typeCase .= RecordType (f record)
 
         _ ->
             model
 
 
-typeFocused : FieldSetter Model Bool
-typeFocused f model =
-    case model of
-        Hole focused ->
-            Hole (f focused)
-
-        RecordType focused record ->
-            RecordType (f focused) record
-
-        _ ->
-            model
+typeCase : FieldSetter Model TypeCase
+typeCase f model =
+    { model | typeCase = f model.typeCase }
