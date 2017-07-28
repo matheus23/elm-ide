@@ -74,13 +74,12 @@ view typ =
             renderTypeInt []
 
         RecordType focused record ->
-            Element.map UpdateRecord
-                (Record.view view record
-                    |> Element.below
-                        [ Element.when focused
-                            (Element.text "focused")
-                        ]
-                )
+            Element.el NoStyle
+                [ Events.onFocus (SetFocus True)
+                , Events.onBlur (SetFocus False)
+                , tabindex 0
+                ]
+                (Element.map UpdateRecord (Record.view view record))
 
 
 viewTypeOption : Model -> Element Styles Variations Msg
