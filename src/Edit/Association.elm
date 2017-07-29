@@ -3,6 +3,7 @@ module Edit.Association exposing (..)
 import ContentEditable as ContentEditable
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
+import Element.Events as Events
 import Focus exposing (..)
 import Focusable
 import Styles exposing (..)
@@ -24,23 +25,27 @@ type Msg innerMsg
     = UpdateKey ContentEditable.Msg
     | UpdateValue innerMsg
     | UpdateFocus Focusable.Msg
+    | Remove
 
 
 
 -- Update
 
 
-update : (innerMsg -> innerModel -> innerModel) -> Msg innerMsg -> Model innerModel -> Model innerModel
+update : (innerMsg -> innerModel -> innerModel) -> Msg innerMsg -> Model innerModel -> List (Model innerModel)
 update updateInner msg model =
     case msg of
         UpdateKey contentEditableMsg ->
-            model & key $= ContentEditable.update contentEditableMsg
+            [ model & key $= ContentEditable.update contentEditableMsg ]
 
         UpdateValue innerMsg ->
-            model & value $= updateInner innerMsg
+            [ model & value $= updateInner innerMsg ]
 
         UpdateFocus focusMsg ->
-            Focusable.update focusMsg model
+            [ Focusable.update focusMsg model ]
+
+        Remove ->
+            []
 
 
 
@@ -51,10 +56,24 @@ view :
     (innerModel -> Element Styles Variations innerMsg)
     -> Model innerModel
     -> Element Styles Variations (Msg innerMsg)
-view viewInner =
+view viewInner model =
     render (Focusable.attributes UpdateFocus)
         (Element.map UpdateKey << ContentEditable.view Identifier)
         (Element.map UpdateValue << viewInner)
+        model
+        |> (if model.focused then
+                viewGadgets
+            else
+                identity
+           )
+
+
+viewGadgets : Element Styles Variations (Msg innerMsg) -> Element Styles Variations (Msg innerMsg)
+viewGadgets =
+    Element.onRight
+        [ Util.wrapStyles [ TypeOptionList, TypeOption ]
+            (Util.styledTextAttr Identifier [ Events.onClick Remove, paddingXY 8 0 ] "-")
+        ]
 
 
 

@@ -31,14 +31,14 @@ type alias Settings msg innerModel =
 
 
 update :
-    (valueMsg -> value -> value)
+    (valueMsg -> value -> List value)
     -> Msg valueMsg
     -> Model value
     -> Model value
 update updateValue msg model =
     case msg of
         UpdateIndex index valueMsg ->
-            model & elements => Util.index index $= updateValue valueMsg
+            model & elements => Util.indexConcat index $= updateValue valueMsg
 
 
 
@@ -52,7 +52,7 @@ view :
 view settings model =
     let
         suffixElement =
-            Element.el Keyword lastBrackedPadding settings.suffix
+            Element.el NoStyle lastBrackedPadding settings.suffix
 
         lastBrackedPadding =
             if model.oneline then
@@ -69,8 +69,13 @@ view settings model =
             else
                 Element.column NoStyle ([ spacing 4 ] ++ attributes)
     in
-    combineAssociations []
-        (assocsRendered ++ [ suffixElement ])
+    if List.isEmpty model.elements then
+        Element.row NoStyle
+            [ spacing 10 ]
+            [ settings.prefixFor [] 0, settings.suffix ]
+    else
+        combineAssociations []
+            (assocsRendered ++ [ suffixElement ])
 
 
 viewElement :
