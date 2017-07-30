@@ -157,7 +157,7 @@ viewArg dragModel index ( argName, typ ) =
 
 viewArgName : Int -> ArgName -> Element Styles Variations Msg
 viewArgName index argName =
-    Element.map (UpdateVar index) (ContentEditable.view Identifier argName)
+    Element.map (UpdateVar index) (ContentEditable.viewAttr [ alignBottom ] Identifier argName)
 
 
 viewName : Model -> Element Styles Variations Msg

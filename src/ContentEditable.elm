@@ -35,16 +35,23 @@ update msg model =
 
 
 view : style -> Model -> Element style variation Msg
-view style model =
-    Element.el style
-        [ contenteditable True
-        , on "input" (Decode.map UserInput innerHtmlDecoder)
-        , onBlur Blur
+view =
+    viewAttr []
 
-        -- placing this here, instead of using Html.text
-        -- fixes a "cannot read property 'replaceData' of undefined"-error
-        , property "innerHTML" (Encode.string model.content)
-        ]
+
+viewAttr : List (Element.Attribute variation Msg) -> style -> Model -> Element style variation Msg
+viewAttr attributes style model =
+    Element.el style
+        ([ contenteditable True
+         , on "input" (Decode.map UserInput innerHtmlDecoder)
+         , onBlur Blur
+
+         -- placing this here, instead of using Html.text
+         -- fixes a "cannot read property 'replaceData' of undefined"-error
+         , property "innerText" (Encode.string model.content)
+         ]
+            ++ attributes
+        )
         Element.empty
 
 

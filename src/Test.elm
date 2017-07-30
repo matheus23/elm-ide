@@ -1,7 +1,5 @@
 module Test exposing (..)
 
-import Element exposing (Element)
-import Element.Events as Events
 import Html exposing (Html)
 import Styles exposing (..)
 import Util
@@ -21,23 +19,43 @@ updateCmd msg model =
     msg ! []
 
 
-viewElement : Model -> Html Msg
-viewElement model =
-    Element.layout stylesheet (view model)
-
-
-view : Model -> Element Styles Variations Msg
+view : Model -> Html Msg
 view model =
-    case model of
-        Bool ->
-            Element.column NoStyle
-                [ Events.onClick Int ]
-                [ Util.styledText Identifier "Bool"
-                , Util.styledText Identifier "Click to change"
+    let
+        renderRecord :
+            (Int -> ( Int, Int ) -> Html msg)
+            -> List ( Int, Int )
+            -> Html msg
+        renderRecord renderAssoc associations =
+            let
+                assocsRendered =
+                    List.indexedMap renderAssoc associations
+            in
+            Html.div []
+                assocsRendered
+
+        renderAssociation :
+            ( Int, Int )
+            -> Html msg
+        renderAssociation ( a, b ) =
+            Html.div []
+                [ Html.text (toString a)
+                , Html.text (toString b)
                 ]
 
-        Int ->
-            Util.styledText Identifier "Int"
+        plainRecord : List ( Int, Int ) -> Html msg
+        plainRecord =
+            renderRecord (\_ -> plainAssociation)
+
+        plainAssociation : ( Int, Int ) -> Html msg
+        plainAssociation ( x, y ) =
+            Html.text (toString ( x, y ))
+
+        plainAssociationIndex : Int -> ( Int, Int ) -> Html msg
+        plainAssociationIndex index =
+            plainAssociation
+    in
+    plainRecord [ ( 1, 2 ), ( 3, 4 ) ]
 
 
 main : Program Never Model Msg
@@ -46,5 +64,5 @@ main =
         { init = Bool ! []
         , update = updateCmd
         , subscriptions = always Sub.none
-        , view = viewElement
+        , view = view
         }

@@ -32,6 +32,18 @@ index index f list =
     List.indexedMap applyAtIndex list
 
 
+indexConcat : Int -> Setter (List a) (List a) a (List a)
+indexConcat index f list =
+    let
+        applyAtIndex i elem =
+            if i == index then
+                f elem
+            else
+                [ elem ]
+    in
+    List.concat (List.indexedMap applyAtIndex list)
+
+
 orTry : Maybe a -> Maybe a -> Maybe a
 orTry maybe1 maybe2 =
     case maybe1 of
@@ -111,6 +123,11 @@ styledText style text =
 styledTextAttr : style -> List (Element.Attribute variation msg) -> String -> Element style variation msg
 styledTextAttr style attributes text =
     Element.el style attributes (Element.text text)
+
+
+wrapStyles : List style -> Element style variation msg -> Element style variation msg
+wrapStyles styles elem =
+    List.foldr (\style -> Element.el style []) elem styles
 
 
 hcenter : style -> Element style variation msg -> Element style variation msg

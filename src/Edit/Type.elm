@@ -1,11 +1,11 @@
 module Edit.Type exposing (..)
 
-import ContentEditable as ContentEditable
+import Edit.Record as Record
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
 import Focus exposing (..)
-import Html5.DragDrop as DragDrop
+import Focusable
 import Styles exposing (..)
 import Util exposing (FieldSetter)
 
@@ -13,28 +13,22 @@ import Util exposing (FieldSetter)
 -- Model
 
 
-type alias Associations =
-    List Association
+type alias Model =
+    Focusable.Model
+        { typeCase : TypeCase
+        }
 
 
-type alias Association =
-    ( RecordKey, Model )
-
-
-type alias RecordKey =
-    ContentEditable.Model
-
-
-type Model
-    = Hole Bool
+type TypeCase
+    = Hole
     | Int
-    | RecordType (List ( RecordKey, Model ))
+    | RecordType (Record.Model Model)
 
 
 type Msg
     = Replace Model
-    | UpdateRecordKey Int ContentEditable.Msg
-    | UpdateRecord Int Msg
+    | UpdateRecord (Record.Msg Msg)
+    | UpdateFocus Focusable.Msg
 
 
 
@@ -47,19 +41,11 @@ update msg model =
         Replace newModel ->
             newModel
 
-        UpdateRecord index innerMsg ->
-            model
-                & recordAssociations
-                => Util.index index
-                => Util.snd
-                $= update innerMsg
+        UpdateRecord recordMsg ->
+            model & record $= Record.update update recordMsg
 
-        UpdateRecordKey index contentEditableMsg ->
-            model
-                & recordAssociations
-                => Util.index index
-                => Util.fst
-                $= ContentEditable.update contentEditableMsg
+        UpdateFocus focusMsg ->
+            Focusable.update focusMsg model
 
 
 
@@ -67,51 +53,45 @@ update msg model =
 
 
 view : Model -> Element Styles Variations Msg
-view typ =
-    case typ of
-        Hole focused ->
-            let
-                typeHoleElement =
-                    renderTypeHole
-                        [ Events.onBlur (Replace (Hole False))
-                        , Events.onFocus (Replace (Hole True))
-                        ]
-            in
-            if focused then
-                typeHoleElement
-                    |> Element.below
-                        [ renderTypeOptionList
-                            [ renderTypeInt [ Events.onClick (Replace Int) ]
-                            , let
-                                exampleAssocs =
-                                    [ ( ContentEditable.create "key", hole ) ]
-                              in
-                              renderRecord [ Events.onClick (Replace (RecordType exampleAssocs)) ]
-                                -- what. THE FUCK? I cant use plainAssociationIndex?!?
-                                (\_ -> plainAssociation)
-                                exampleAssocs
+view model =
+    case model.typeCase of
+        Hole ->
+            renderTypeHole
+                (Focusable.attributes UpdateFocus)
+                |> Element.below
+                    [ Element.when model.focused <|
+                        viewTypeOptionList
+                            [ int
+                            , recordType False
+                                [ ( "key", hole )
+                                , ( "test", int )
+                                ]
                             ]
-                        ]
-            else
-                typeHoleElement
+                    ]
 
         Int ->
             renderTypeInt []
 
-        RecordType associations ->
-            viewRecord associations
+        RecordType record ->
+            Focusable.wrapFocusable NoStyle
+                UpdateFocus
+                (Element.map UpdateRecord (Record.view view record))
 
 
-viewRecord : Associations -> Element Styles Variations Msg
-viewRecord =
-    renderRecord [] (\index -> viewAssociation index)
+viewTypeOption : Model -> Element Styles Variations Msg
+viewTypeOption typ =
+    Element.el TypeOption
+        [ padding 4
+        , Events.onClick (Replace typ)
+        ]
+        (plain typ)
 
 
-viewAssociation : Int -> ( RecordKey, Model ) -> Element Styles Variations Msg
-viewAssociation index =
-    renderAssociation
-        (Element.map (UpdateRecordKey index) << ContentEditable.view Identifier)
-        (Element.map (UpdateRecord index) << view)
+viewTypeOptionList : List Model -> Element Styles Variations Msg
+viewTypeOptionList options =
+    Element.column TypeOptionList
+        [ spacing 2 ]
+        (List.map viewTypeOption options)
 
 
 
@@ -123,7 +103,6 @@ renderTypeHole events =
     Element.el TypeHole
         ([ center
          , paddingXY 4 0
-         , tabindex 0
          ]
             ++ events
         )
@@ -135,68 +114,21 @@ renderTypeInt events =
     Util.styledTextAttr Identifier ([ center ] ++ events) "Int"
 
 
-renderTypeOption : Element Styles Variations msg -> Element Styles Variations msg
-renderTypeOption =
-    Element.el TypeOption [ padding 4 ]
+
+-- render stuff plainly, i.e. deeply without any event handling (like static images)
 
 
-renderTypeOptionList : List (Element Styles Variations msg) -> Element Styles Variations msg
-renderTypeOptionList options =
-    Element.column TypeOptionList
-        [ spacing 2 ]
-        (List.map renderTypeOption options)
-
-
-renderRecord :
-    List (Element.Attribute Variations msg)
-    -> (Int -> Association -> Element Styles Variations msg)
-    -> Associations
-    -> Element Styles Variations msg
-renderRecord events renderAssoc associations =
-    let
-        openBracket =
-            Util.styledText Keyword "{"
-
-        closingBracket =
-            Util.styledText Keyword "}"
-
-        assocsRendered =
-            List.indexedMap renderAssoc associations
-    in
-    Element.row NoStyle
-        ([ spacing 10 ] ++ events)
-        ([ openBracket ] ++ assocsRendered ++ [ closingBracket ])
-
-
-renderAssociation :
-    (RecordKey -> Element Styles Variations msg)
-    -> (Model -> Element Styles Variations msg)
-    -> Association
-    -> Element Styles Variations msg
-renderAssociation renderKey renderType ( key, typ ) =
-    Element.row NoStyle
-        [ spacing 10 ]
-        [ renderKey key
-        , Util.styledText Keyword ":"
-        , renderType typ
-        ]
-
-
-
--- render stuff plainly, i.e. deeply without any event handling (static images)
-
-
-plainType : Model -> Element Styles Variations msg
-plainType model =
-    case model of
-        Hole focused ->
+plain : Model -> Element Styles Variations msg
+plain model =
+    case model.typeCase of
+        Hole ->
             plainHole
 
         Int ->
             plainInt
 
-        RecordType associations ->
-            plainRecord associations
+        RecordType record ->
+            Record.plain plain record
 
 
 plainHole : Element Styles Variations msg
@@ -209,52 +141,48 @@ plainInt =
     renderTypeInt []
 
 
-plainRecord : Associations -> Element Styles Variations msg
-plainRecord =
-    -- plainAssociationIndex doesn't work. I don't fucking know why.
-    renderRecord [] (\_ -> plainAssociation)
-
-
-plainAssociation : Association -> Element Styles Variations msg
-plainAssociation =
-    renderAssociation plainKey plainType
-
-
-plainAssociationIndex : Int -> Association -> Element Styles Variations msg
-plainAssociationIndex index assoc =
-    plainAssociation assoc
-
-
-plainKey : RecordKey -> Element Styles Variations msg
-plainKey key =
-    Util.styledText Identifier key.liveContent
-
-
 
 -- Smart constructors
 
 
+fromCase : TypeCase -> Model
+fromCase typeCase =
+    { focused = False, typeCase = typeCase }
+
+
 hole : Model
 hole =
-    Hole False
+    fromCase Hole
 
 
-recordType : List ( String, Model ) -> Model
-recordType associations =
-    RecordType (List.map (Util.fst $= ContentEditable.create) associations)
+int : Model
+int =
+    fromCase Int
+
+
+recordType : Bool -> List ( String, Model ) -> Model
+recordType oneline associations =
+    { focused = False
+    , typeCase = RecordType (Record.model oneline associations)
+    }
 
 
 
 -- Lenses
 
 
-{-| Ignores any other cases than Records.
+{-| Ignores all cases except for Records.
 -}
-recordAssociations : FieldSetter Model (List ( RecordKey, Model ))
-recordAssociations f model =
-    case model of
-        RecordType associations ->
-            RecordType (f associations)
+record : FieldSetter Model (Record.Model Model)
+record f model =
+    case model.typeCase of
+        RecordType record ->
+            model & typeCase .= RecordType (f record)
 
         _ ->
             model
+
+
+typeCase : FieldSetter Model TypeCase
+typeCase f model =
+    { model | typeCase = f model.typeCase }
