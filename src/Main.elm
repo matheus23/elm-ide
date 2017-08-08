@@ -1,10 +1,10 @@
 module Main exposing (..)
 
+import DragAndDrop.ReorderList as ReorderList
 import Edit.Function as Function
 import Edit.Type as Type
 import Element exposing (Element)
 import Html exposing (Html)
-import Html5.DragDrop as DragDrop
 import Styles exposing (..)
 
 
@@ -12,13 +12,13 @@ init : ( Function.Model, Cmd msg )
 init =
     { name = Function.name "append"
     , args =
-        [ ( Function.argName "arg1", Type.hole )
-        , ( Function.argName "arg2", Type.hole )
-        , ( Function.argName "record"
-          , Type.recordType True [ ( "key", Type.int ) ]
-          )
-        ]
-    , dragDrop = DragDrop.init
+        ReorderList.init
+            [ ( Function.argName "arg1", Type.hole )
+            , ( Function.argName "arg2", Type.hole )
+            , ( Function.argName "record"
+              , Type.recordType True [ ( "key", Type.int ) ]
+              )
+            ]
     }
         ! []
 
@@ -33,11 +33,16 @@ viewElement model =
     Element.layout stylesheet (Function.view model)
 
 
+subscriptions : Function.Model -> Sub Function.Msg
+subscriptions =
+    Function.subscriptions
+
+
 main : Program Never Function.Model Function.Msg
 main =
     Html.program
         { init = init
         , update = updateCmd
-        , subscriptions = always Sub.none
+        , subscriptions = subscriptions
         , view = viewElement
         }

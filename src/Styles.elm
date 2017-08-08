@@ -21,11 +21,6 @@ type Styles
     | TypeHoleText
     | TypeOption
     | TypeOptionList
-      -- drag and drop
-    | Draggable
-    | Droppable
-    | Dragged
-    | DragHover
 
 
 stylesheet : StyleSheet Styles Variations
@@ -60,24 +55,5 @@ stylesheet =
         , style TypeOptionList
             [ Color.background Color.lightGray
             , Style.prop "z-index" "1"
-            ]
-
-        -- Drag Drop styles
-        , style Draggable
-            [ Color.border (Color.rgba 0 0 0 0)
-            , Border.all 1
-            ]
-        , style Droppable
-            [ Border.all 1
-            , Border.dotted
-            , Color.border Color.grey
-            ]
-        , style Dragged
-            [ Color.text Color.grey
-            , Border.all 1
-            , Color.border (Color.rgba 0 0 0 0)
-            ]
-        , style DragHover
-            [ Border.all 1
             ]
         ]

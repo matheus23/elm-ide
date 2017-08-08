@@ -1,12 +1,13 @@
 module Edit.Function exposing (..)
 
 import ContentEditable as ContentEditable
+import DragAndDrop
+import DragAndDrop.Divider as Divider
+import DragAndDrop.ReorderList as ReorderList
 import Edit.Type as Type
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
-import Element.Events as Events
 import Focus exposing (..)
-import Html5.DragDrop as DragDrop
 import Styles exposing (..)
 import Util exposing (FieldSetter)
 
@@ -21,16 +22,18 @@ type alias ArgName =
 
 type alias Model =
     { name : Name
-    , args : List ( ArgName, Type.Model )
-    , dragDrop : DragDrop.Model Int Int
+    , args : ReorderList.Model ( ArgName, Type.Model )
     }
 
 
 type Msg
     = UpdateName ContentEditable.Msg
-    | UpdateType Int Type.Msg
+    | ReorderListMsg (ReorderList.Msg ArgsMsg)
+
+
+type ArgsMsg
+    = UpdateType Int Type.Msg
     | UpdateVar Int ContentEditable.Msg
-    | DragDropMsg (DragDrop.Msg Int Int)
 
 
 
@@ -43,45 +46,23 @@ update msg model =
         UpdateName msg ->
             model & functionName $= ContentEditable.update msg
 
+        ReorderListMsg msg ->
+            model & args $= ReorderList.update updateArgs msg
+
+
+updateArgs : ArgsMsg -> List ( ArgName, Type.Model ) -> List ( ArgName, Type.Model )
+updateArgs msg args =
+    case msg of
         UpdateType index typeMsg ->
-            model & args => Util.index index => Util.snd $= Type.update typeMsg
+            args & Util.index index => Util.snd $= Type.update typeMsg
 
         UpdateVar index msg ->
-            model & args => Util.index index => Util.fst $= ContentEditable.update msg
-
-        DragDropMsg msg ->
-            let
-                ( drag, maybeDrop ) =
-                    DragDrop.update msg model.dragDrop
-            in
-            (model & dragDrop .= drag)
-                |> applyDrop maybeDrop
+            args & Util.index index => Util.fst $= ContentEditable.update msg
 
 
-applyDrop : Maybe ( Int, Int ) -> Model -> Model
-applyDrop maybeDrop model =
-    case maybeDrop of
-        Nothing ->
-            model
-
-        Just ( dragId, dropId ) ->
-            let
-                dragged =
-                    Util.getIndex dragId model.args
-
-                dropped =
-                    Util.getIndex dropId model.args
-
-                subst =
-                    Maybe.map2 substitute dragged dropped
-
-                substitute dragged dropped =
-                    (model & args => Util.index dragId .= dropped)
-                        & args
-                        => Util.index dropId
-                        .= dragged
-            in
-            Maybe.withDefault model subst
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.map ReorderListMsg (ReorderList.subscriptions model.args)
 
 
 
@@ -91,8 +72,15 @@ applyDrop maybeDrop model =
 view : Model -> Element Styles Variations Msg
 view model =
     let
+        settings =
+            { nostyle = NoStyle
+            , dividerSize = 30
+            , orientation = Divider.Vertical
+            , viewItems = viewArgs model.args.dragModel
+            }
+
         argElements =
-            viewArgs model.dragDrop model.args
+            List.map (Element.map ReorderListMsg) (ReorderList.view settings model.args)
 
         args =
             List.intersperse arrow argElements
@@ -109,53 +97,21 @@ view model =
     Element.row NoStyle [ spacing 10, padding 5 ] (viewName model :: hasType :: args ++ [ equalsSign ])
 
 
-viewArgs : DragDrop.Model Int Int -> List ( ArgName, Type.Model ) -> List (Element Styles Variations Msg)
+viewArgs : DragAndDrop.Model Int Int -> List ( ArgName, Type.Model ) -> List (Element Styles Variations ArgsMsg)
 viewArgs dragModel args =
     List.indexedMap (viewArg dragModel) args
 
 
-viewArg : DragDrop.Model Int Int -> Int -> ( ArgName, Type.Model ) -> Element Styles Variations Msg
+viewArg : DragAndDrop.Model Int Int -> Int -> ( ArgName, Type.Model ) -> Element Styles Variations ArgsMsg
 viewArg dragModel index ( argName, typ ) =
-    let
-        isDragging =
-            Util.isJust (DragDrop.getDragId dragModel)
-
-        draggableAttributes =
-            if not isDragging then
-                DragDrop.draggableElement DragDropMsg index
-            else
-                []
-
-        isDraggedElem =
-            Maybe.withDefault -1 (DragDrop.getDragId dragModel) == index
-
-        isDroppedElem =
-            Maybe.withDefault -1 (DragDrop.getDropId dragModel) == index
-
-        droppableAttributes =
-            if isDragging then
-                DragDrop.droppableElement DragDropMsg index
-            else
-                []
-
-        style =
-            if isDraggedElem then
-                Dragged
-            else if isDroppedElem then
-                DragHover
-            else if isDragging then
-                Droppable
-            else
-                Draggable
-    in
-    Element.column style
-        ([ spacing 2 ] ++ draggableAttributes ++ droppableAttributes)
+    Element.column NoStyle
+        [ spacing 2 ]
         [ Element.map (UpdateType index) (Type.view typ)
         , viewArgName index argName
         ]
 
 
-viewArgName : Int -> ArgName -> Element Styles Variations Msg
+viewArgName : Int -> ArgName -> Element Styles Variations ArgsMsg
 viewArgName index argName =
     Element.map (UpdateVar index) (ContentEditable.viewAttr [ alignBottom ] Identifier argName)
 
@@ -187,16 +143,11 @@ name =
 -- Lenses
 
 
-dragDrop : FieldSetter Model (DragDrop.Model Int Int)
-dragDrop f model =
-    { model | dragDrop = f model.dragDrop }
-
-
 functionName : FieldSetter Model Name
 functionName f model =
     { model | name = f model.name }
 
 
-args : FieldSetter Model (List ( ArgName, Type.Model ))
+args : FieldSetter Model (ReorderList.Model ( ArgName, Type.Model ))
 args f model =
     { model | args = f model.args }
