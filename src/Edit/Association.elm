@@ -72,8 +72,7 @@ view viewInner model =
 viewGadgets : Element Styles Variations (Msg innerMsg) -> Element Styles Variations (Msg innerMsg)
 viewGadgets =
     Element.onRight
-        [ Util.wrapStyles [ TypeOptionList, TypeOption ]
-            (Util.styledTextAttr Identifier [ Events.onClick Remove, paddingXY 8 0 ] "-")
+        [ Util.styledTextAttr Button [ Events.onClick Remove, paddingXY 8 0 ] "-"
         ]
 
 

@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import DragAndDrop.ReorderList as ReorderList
+import Edit.Arg as Arg
 import Edit.Function as Function
 import Edit.Type as Type
 import Element exposing (Element)
@@ -13,11 +14,14 @@ init =
     { name = Function.name "append"
     , args =
         ReorderList.init
-            [ ( Function.argName "arg1", Type.hole )
-            , ( Function.argName "arg2", Type.hole )
-            , ( Function.argName "record"
-              , Type.recordType True [ ( "key", Type.int ) ]
-              )
+            [ Arg.init "arg1" Type.hole
+            , Arg.init "arg2" Type.hole
+            , Arg.init "record"
+                (Type.recordType True
+                    [ ( "key", Type.int )
+                    , ( "key2", Type.hole )
+                    ]
+                )
             ]
     }
         ! []

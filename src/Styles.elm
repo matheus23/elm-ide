@@ -13,16 +13,22 @@ type alias Variations =
 
 type Styles
     = NoStyle
+      -- general
+    | Button
+    | DragGrab
       -- text
     | Keyword
     | Identifier
       -- types
     | TypeHole
     | TypeHoleText
-    | TypeOption
     | TypeOptionList
       -- functions
-    | AddParameterButton
+    | DividerHighlight
+
+
+
+-- functions
 
 
 stylesheet : StyleSheet Styles Variations
@@ -30,6 +36,18 @@ stylesheet =
     Style.styleSheet
         [ style NoStyle
             []
+
+        -- general
+        , style Button
+            [ Style.prop "z-index" "2"
+            , Style.prop "cursor" "pointer"
+            , Color.background Color.lightGrey
+            , hover [ Color.background (Color.rgb 200 230 255) ]
+            ]
+        , style DragGrab
+            [ Color.text Color.darkGrey
+            , Style.prop "cursor" "grab"
+            ]
 
         -- Text styles
         , style Keyword
@@ -50,14 +68,14 @@ stylesheet =
             [ Border.all 1
             , Color.border Color.darkGrey
             ]
-        , style TypeOption
-            [ Style.prop "z-index" "2"
-            , hover [ Color.background (Color.rgb 200 230 255) ]
-            ]
         , style TypeOptionList
-            [ Color.background Color.lightGray
+            [ Color.background Color.lightGrey
             , Style.prop "z-index" "1"
             ]
-        , style AddParameterButton
-            [ Color.background Color.lightGray ]
+
+        -- functions
+        , style DividerHighlight
+            [ Color.background (Color.rgb 255 251 233)
+            , Style.prop "z-index" "-1"
+            ]
         ]

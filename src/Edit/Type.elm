@@ -81,7 +81,7 @@ view model =
 
 viewTypeOption : Model -> Element Styles Variations Msg
 viewTypeOption typ =
-    Element.el TypeOption
+    Element.el Button
         [ padding 4
         , Events.onClick (Replace typ)
         ]
