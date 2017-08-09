@@ -4,7 +4,8 @@ import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
 import Focus exposing (..)
-import Util exposing (FieldSetter)
+import FocusMore as Focus exposing (FieldSetter)
+import Util
 
 
 -- Model

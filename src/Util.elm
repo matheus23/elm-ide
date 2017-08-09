@@ -4,44 +4,26 @@ import Element exposing (Element)
 import Element.Attributes exposing (..)
 import Focus exposing (..)
 import Html exposing (Html)
+import Murmur3
 
 
-type alias FieldSetter record field =
-    Setter record record field field
+addKey : model -> a -> ( String, a )
+addKey model sth =
+    ( stringHash model, sth )
 
 
-fst : Setter ( a, c ) ( b, c ) a b
-fst f ( x, y ) =
-    ( f x, y )
+stringHash : a -> String
+stringHash =
+    toString >> Murmur3.hashString 1319285 >> toString
 
 
-snd : Setter ( c, a ) ( c, b ) a b
-snd f ( x, y ) =
-    ( x, f y )
-
-
-index : Int -> Setter (List a) (List a) a a
-index index f list =
+zip : List a -> List b -> List ( a, b )
+zip =
     let
-        applyAtIndex i elem =
-            if i == index then
-                f elem
-            else
-                elem
+        tuple2 x y =
+            ( x, y )
     in
-    List.indexedMap applyAtIndex list
-
-
-indexConcat : Int -> Setter (List a) (List a) a (List a)
-indexConcat index f list =
-    let
-        applyAtIndex i elem =
-            if i == index then
-                f elem
-            else
-                [ elem ]
-    in
-    List.concat (List.indexedMap applyAtIndex list)
+    List.map2 tuple2
 
 
 orTry : Maybe a -> Maybe a -> Maybe a

@@ -12,8 +12,9 @@ module Edit.Record exposing (..)
 import Edit.Association as Association
 import Edit.GroupLit as GroupLit
 import Element as Element exposing (Element)
+import FocusMore as Focus exposing (FieldSetter)
 import Styles exposing (..)
-import Util exposing (FieldSetter)
+import Util
 
 
 -- Model

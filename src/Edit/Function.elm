@@ -7,9 +7,12 @@ import DragAndDrop.ReorderList as ReorderList
 import Edit.Type as Type
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
+import Element.Keyed as Keyed
 import Focus exposing (..)
+import FocusMore as Focus exposing (FieldSetter)
 import Styles exposing (..)
-import Util exposing (FieldSetter)
+import Tuple
+import Util
 
 
 type alias Name =
@@ -54,10 +57,10 @@ updateArgs : ArgsMsg -> List ( ArgName, Type.Model ) -> List ( ArgName, Type.Mod
 updateArgs msg args =
     case msg of
         UpdateType index typeMsg ->
-            args & Util.index index => Util.snd $= Type.update typeMsg
+            args & Focus.index index => Focus.second $= Type.update typeMsg
 
         UpdateVar index msg ->
-            args & Util.index index => Util.fst $= ContentEditable.update msg
+            args & Focus.index index => Focus.first $= ContentEditable.update msg
 
 
 subscriptions : Model -> Sub Msg
@@ -80,21 +83,23 @@ view model =
             }
 
         argElements =
-            List.map (Element.map ReorderListMsg) (ReorderList.view settings model.args)
+            ReorderList.view settings model.args
+                |> Util.zip (List.map (.liveContent << Tuple.first) model.args.elements)
+                |> (List.map => Focus.second => Element.map $= ReorderListMsg)
 
         args =
             List.intersperse arrow argElements
 
         arrow =
-            Util.styledText Keyword "→"
+            ( "arrow", Util.styledText Keyword "→" )
 
         hasType =
-            Util.styledText Keyword ":"
+            ( "hasType", Util.styledText Keyword ":" )
 
         equalsSign =
-            Util.styledTextAttr Keyword [ paddingLeft 4, alignBottom ] "="
+            ( "equalsSign", Util.styledTextAttr Keyword [ paddingLeft 4, alignBottom ] "=" )
     in
-    Element.row NoStyle [ spacing 10, padding 5 ] (viewName model :: hasType :: args ++ [ equalsSign ])
+    Keyed.row NoStyle [ spacing 10, padding 5 ] (viewName model :: hasType :: args ++ [ equalsSign ])
 
 
 viewArgs : DragAndDrop.Model Int Int -> List ( ArgName, Type.Model ) -> List (Element Styles Variations ArgsMsg)
@@ -116,13 +121,15 @@ viewArgName index argName =
     Element.map (UpdateVar index) (ContentEditable.viewAttr [ alignBottom ] Identifier argName)
 
 
-viewName : Model -> Element Styles Variations Msg
+viewName : Model -> ( String, Element Styles Variations Msg )
 viewName model =
-    Element.column NoStyle
+    ( "FunctionName"
+    , Element.column NoStyle
         [ spacing 5 ]
         [ Element.map UpdateName (ContentEditable.view Identifier model.name)
         , Util.styledText Identifier model.name.liveContent
         ]
+    )
 
 
 

@@ -5,8 +5,9 @@ import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
 import Focus exposing (..)
+import FocusMore as Focus exposing (FieldSetter)
 import Styles exposing (..)
-import Util exposing (FieldSetter)
+import Util
 
 
 type alias Model value =
@@ -38,7 +39,7 @@ update :
 update updateValue msg model =
     case msg of
         UpdateIndex index valueMsg ->
-            model & elements => Util.indexConcat index $= updateValue valueMsg
+            model & elements => Focus.indexConcat index $= updateValue valueMsg
 
 
 

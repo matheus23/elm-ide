@@ -5,9 +5,10 @@ import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
 import Focus exposing (..)
+import FocusMore as Focus exposing (FieldSetter)
 import Focusable
 import Styles exposing (..)
-import Util exposing (FieldSetter)
+import Util
 
 
 type alias Key =

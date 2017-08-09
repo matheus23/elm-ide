@@ -21,6 +21,8 @@ type Styles
     | TypeHoleText
     | TypeOption
     | TypeOptionList
+      -- functions
+    | AddParameterButton
 
 
 stylesheet : StyleSheet Styles Variations
@@ -56,4 +58,6 @@ stylesheet =
             [ Color.background Color.lightGray
             , Style.prop "z-index" "1"
             ]
+        , style AddParameterButton
+            [ Color.background Color.lightGray ]
         ]
