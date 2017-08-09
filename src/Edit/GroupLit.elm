@@ -6,6 +6,7 @@ import Element.Attributes exposing (..)
 import Element.Events as Events
 import Focus exposing (..)
 import FocusMore as Focus exposing (FieldSetter)
+import PlainElement exposing (PlainAttribute, PlainElement)
 import Styles exposing (..)
 import Util
 
@@ -18,12 +19,12 @@ type alias Model value =
 
 type Msg innerMsg
     = UpdateIndex Int innerMsg
+    | FlipOneLine
 
 
-type alias Settings msg innerModel =
-    { prefixFor : List (Element.Attribute Variations msg) -> Int -> Element Styles Variations msg
-    , suffix : Element Styles Variations msg
-    , viewInner : Int -> innerModel -> Element Styles Variations msg
+type alias Settings =
+    { prefixFor : List (PlainAttribute Variations) -> Int -> PlainElement Styles Variations
+    , suffix : PlainElement Styles Variations
     }
 
 
@@ -41,19 +42,44 @@ update updateValue msg model =
         UpdateIndex index valueMsg ->
             model & elements => Focus.indexConcat index $= updateValue valueMsg
 
+        FlipOneLine ->
+            model & oneline $= not
+
 
 
 -- View
 
 
 view :
-    Settings msg innerModel
+    Settings
+    -> (innerModel -> Element Styles Variations msg)
     -> Model innerModel
+    -> Element Styles Variations (Msg msg)
+view settings viewInner model =
+    let
+        viewElement index innerModel =
+            Element.row NoStyle
+                []
+                [ PlainElement.view (settings.prefixFor [ paddingRight 10 ] index)
+                , Element.map (UpdateIndex index) (viewInner innerModel)
+                ]
+
+        elementsRendered =
+            List.indexedMap viewElement model.elements
+    in
+    render settings model [ Events.onDoubleClick FlipOneLine ] elementsRendered
+
+
+render :
+    Settings
+    -> Model innerModel
+    -> List (Element.Attribute Variations msg)
+    -> List (Element Styles Variations msg)
     -> Element Styles Variations msg
-view settings model =
+render settings model attributes elementsRendered =
     let
         suffixElement =
-            Element.el NoStyle lastBrackedPadding settings.suffix
+            PlainElement.el NoStyle lastBrackedPadding settings.suffix
 
         lastBrackedPadding =
             if model.oneline then
@@ -61,35 +87,29 @@ view settings model =
             else
                 []
 
-        assocsRendered =
-            List.indexedMap (viewElement settings) model.elements
-
-        combineAssociations attributes =
+        combineElements attributes =
             if model.oneline then
                 Element.row NoStyle attributes
             else
                 Element.column NoStyle ([ spacing 4 ] ++ attributes)
     in
     if List.isEmpty model.elements then
-        Element.row NoStyle
-            [ spacing 10 ]
-            [ settings.prefixFor [] 0, settings.suffix ]
+        PlainElement.view <|
+            Element.row NoStyle
+                [ spacing 10 ]
+                [ settings.prefixFor [] 0, settings.suffix ]
     else
-        combineAssociations []
-            (assocsRendered ++ [ suffixElement ])
+        combineElements attributes
+            (elementsRendered ++ [ PlainElement.view suffixElement ])
 
 
-viewElement :
-    Settings msg innerModel
-    -> Int
-    -> innerModel
-    -> Element Styles Variations msg
-viewElement settings index innerModel =
-    Element.row NoStyle
-        []
-        [ settings.prefixFor [ paddingRight 10 ] index
-        , settings.viewInner index innerModel
-        ]
+plain :
+    Settings
+    -> (innerModel -> PlainElement Styles Variations)
+    -> Model innerModel
+    -> PlainElement Styles Variations
+plain settings plainInner model =
+    render settings model [] (List.map plainInner model.elements)
 
 
 
