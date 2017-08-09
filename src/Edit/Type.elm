@@ -49,6 +49,16 @@ update msg model =
             Focusable.update focusMsg model
 
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    case model.typeCase of
+        RecordType record ->
+            Sub.map UpdateRecord (Record.subscriptions subscriptions record)
+
+        _ ->
+            Sub.none
+
+
 
 -- View
 
@@ -164,7 +174,7 @@ int =
 recordType : Bool -> List ( String, Model ) -> Model
 recordType oneline associations =
     { focused = False
-    , typeCase = RecordType (Record.model oneline associations)
+    , typeCase = RecordType (Record.init oneline associations)
     }
 
 

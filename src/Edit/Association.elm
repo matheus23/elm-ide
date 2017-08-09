@@ -49,6 +49,11 @@ update updateInner msg model =
             []
 
 
+subscriptions : (a -> Sub innerMsg) -> Model a -> Sub (Msg innerMsg)
+subscriptions innerSubs model =
+    Sub.map UpdateValue (innerSubs model.value)
+
+
 
 -- View
 
@@ -127,8 +132,8 @@ value f model =
 -- Smart Constructors
 
 
-model : ( String, a ) -> Model a
-model ( name, innerValue ) =
+init : ( String, a ) -> Model a
+init ( name, innerValue ) =
     { key = ContentEditable.create name
     , value = innerValue
     , focused = False

@@ -66,6 +66,11 @@ update msg model =
             []
 
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.map UpdateType (Type.subscriptions model.itsType)
+
+
 
 -- View
 

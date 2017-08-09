@@ -38,6 +38,11 @@ update updateInner =
     GroupLit.update (Association.update updateInner)
 
 
+subscriptions : (a -> Sub innerMsg) -> Model a -> Sub (Msg innerMsg)
+subscriptions innerSubs =
+    GroupLit.subscriptions (Association.subscriptions innerSubs)
+
+
 
 -- View
 
@@ -80,8 +85,6 @@ plain plainInner model =
 -- Smart constructors
 
 
-model : Bool -> List ( String, a ) -> Model a
-model oneline associations =
-    { elements = List.map Association.model associations
-    , oneline = oneline
-    }
+init : Bool -> List ( String, a ) -> Model a
+init oneline associations =
+    GroupLit.init oneline (List.map Association.init associations)
