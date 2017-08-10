@@ -2,10 +2,10 @@ module Main exposing (..)
 
 import DragAndDrop.ReorderList as ReorderList
 import Edit.Arg as Arg
+import Edit.Expression as Expression
 import Edit.Function as Function
 import Edit.Type as Type
 import Element exposing (Element)
-import Html exposing (Html)
 import Styles exposing (..)
 
 
@@ -23,6 +23,8 @@ init =
                     ]
                 )
             ]
+    , body =
+        Expression.application Expression.hole [ Expression.intLiteral 15, Expression.intLiteral 42 ]
     }
         ! []
 
@@ -32,21 +34,11 @@ updateCmd msg model =
     Function.update msg model ! []
 
 
-viewElement : Function.Model -> Html Function.Msg
-viewElement model =
-    Element.layout stylesheet (Function.view model)
-
-
-subscriptions : Function.Model -> Sub Function.Msg
-subscriptions =
-    Function.subscriptions
-
-
 main : Program Never Function.Model Function.Msg
 main =
-    Html.program
+    styleElementsProgram
         { init = init
         , update = updateCmd
-        , subscriptions = subscriptions
-        , view = viewElement
+        , subscriptions = Function.subscriptions
+        , view = Function.view
         }

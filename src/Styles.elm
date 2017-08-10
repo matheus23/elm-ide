@@ -1,14 +1,17 @@
 module Styles exposing (..)
 
 import Color
+import Element exposing (Element)
+import Html
 import Style exposing (..)
 import Style.Border as Border
 import Style.Color as Color
 import Style.Font as Font
+import Style.Shadow as Shadow
 
 
-type alias Variations =
-    Never
+type Variations
+    = ActionbarButtonActive
 
 
 type Styles
@@ -16,9 +19,14 @@ type Styles
       -- general
     | Button
     | DragGrab
+      -- Actionbar
+    | Actionbar
+    | ActionbarButton
+    | ActionbarKey
       -- text
     | Keyword
     | Identifier
+    | Literal
       -- types
     | TypeHole
     | TypeHoleText
@@ -49,6 +57,32 @@ stylesheet =
             , Style.prop "cursor" "grab"
             ]
 
+        -- ActionBar
+        , style Actionbar
+            [ Border.right 2
+            , Color.border Color.darkGrey
+            ]
+        , style ActionbarButton
+            [ Border.top 1
+            , Border.bottom 1
+            , Color.border Color.darkGrey
+            , Font.typeface [ "Lucida Console", "Courier New" ]
+            , Font.bold
+            , Color.text (Color.rgb 80 80 80)
+            , variation ActionbarButtonActive
+                [ Color.background Color.lightGrey ]
+            ]
+        , style ActionbarKey
+            [ Border.all 1
+            , Border.rounded 5
+            , Color.border Color.darkGrey
+            , Color.background Color.lightGrey
+            , Shadow.simple
+            , Color.text Color.black
+            , Font.typeface [ "Lucida Console", "Courier New" ]
+            , Font.size 10
+            ]
+
         -- Text styles
         , style Keyword
             [ Font.typeface [ "Lucida Console", "Courier New" ]
@@ -57,6 +91,10 @@ stylesheet =
         , style Identifier
             [ Font.typeface [ "Lucida Console", "Courier New" ]
             , Color.text (Color.rgb 30 30 30)
+            ]
+        , style Literal
+            [ Font.typeface [ "Lucida Console", "Courier New" ]
+            , Color.text Color.darkGreen
             ]
 
         -- Type styles
@@ -79,3 +117,25 @@ stylesheet =
             , Style.prop "z-index" "-1"
             ]
         ]
+
+
+type alias StyleElementsProgram model message =
+    { init : ( model, Cmd message )
+    , update : message -> model -> ( model, Cmd message )
+    , subscriptions : model -> Sub message
+    , view : model -> Element Styles Variations message
+    }
+
+
+styleElementsProgram : StyleElementsProgram model message -> Program Never model message
+styleElementsProgram { init, update, subscriptions, view } =
+    let
+        viewElement model =
+            Element.layout stylesheet (view model)
+    in
+    Html.program
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = viewElement
+        }

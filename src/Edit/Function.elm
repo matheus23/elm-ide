@@ -5,6 +5,7 @@ import DragAndDrop
 import DragAndDrop.Divider as Divider
 import DragAndDrop.ReorderList as ReorderList
 import Edit.Arg as Arg
+import Edit.Expression as Expression
 import Edit.Type as Type
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
@@ -12,8 +13,8 @@ import Element.Events as Events
 import Element.Keyed as Keyed
 import Focus exposing (..)
 import FocusMore as Focus exposing (FieldSetter)
+import Focusable
 import Styles exposing (..)
-import Tuple
 import Util
 
 
@@ -24,17 +25,16 @@ type alias Name =
 type alias Model =
     { name : Name
     , args : ReorderList.Model Arg.Model
+    , body : Expression.Model
     }
 
 
 type Msg
     = UpdateName ContentEditable.Msg
-    | ReorderListMsg (ReorderList.Msg ArgsMsg)
+    | ReorderListMsg ReorderList.Msg
+    | ArgMsg Int Arg.Msg
+    | ExpressionMsg Expression.Msg
     | AddArg
-
-
-type ArgsMsg
-    = UpdateArgIndex Int Arg.Msg
 
 
 
@@ -48,15 +48,31 @@ update msg model =
             model & functionName $= ContentEditable.update msg
 
         ReorderListMsg msg ->
-            model & args $= ReorderList.update updateArgs msg
+            let
+                ( newReorderList, maybeEvent ) =
+                    ReorderList.updateWithEvents msg model.args
+
+                justDropped =
+                    case maybeEvent of
+                        Just (DragAndDrop.SuccessfulDrop _ _) ->
+                            True
+
+                        _ ->
+                            False
+            in
+            model
+                |> (args .= newReorderList)
+                |> Focus.when justDropped
+                    (args => ReorderList.elements => List.map => Focusable.focused .= False)
+
+        ArgMsg index argMsg ->
+            model & args => ReorderList.elements => Focus.indexConcat index $= Arg.update argMsg
+
+        ExpressionMsg exprMsg ->
+            model & body $= Expression.update exprMsg
 
         AddArg ->
             model & args => ReorderList.elements $= (\args -> args ++ [ Arg.init "arg" Type.hole ])
-
-
-updateArgs : ArgsMsg -> List Arg.Model -> List Arg.Model
-updateArgs (UpdateArgIndex index argMsg) =
-    Focus.indexConcat index $= Arg.update argMsg
 
 
 subscriptions : Model -> Sub Msg
@@ -70,6 +86,15 @@ subscriptions model =
 
 view : Model -> Element Styles Variations Msg
 view model =
+    Element.column NoStyle
+        [ spacing 4 ]
+        [ viewNameAndArgs model
+        , viewBody model.body
+        ]
+
+
+viewNameAndArgs : Model -> Element Styles Variations Msg
+viewNameAndArgs model =
     let
         wrapHighlightedDivider =
             Element.el DividerHighlight [ height (fill 1), paddingXY 4 0 ]
@@ -78,11 +103,10 @@ view model =
             { nostyle = NoStyle
             , dividerSize = 30
             , orientation = Divider.Vertical
-            , viewItems = viewArgs model.args.dragModel
             }
 
         argElements =
-            ReorderList.viewKeyed settings model.args & List.map => Focus.second => Element.map $= ReorderListMsg
+            ReorderList.viewKeyed settings ReorderListMsg (viewArgs model.args.dragModel) model.args
 
         args =
             List.intersperse arrow argElements
@@ -105,11 +129,11 @@ view model =
     Keyed.row NoStyle [ spacing 10, padding 5 ] (viewName model :: hasType :: args ++ [ equalsSign ])
 
 
-viewArgs : DragAndDrop.Model Int Int -> List Arg.Model -> List ( String, Element Styles Variations ArgsMsg )
+viewArgs : DragAndDrop.Model Int Int -> List Arg.Model -> List ( String, Element Styles Variations Msg )
 viewArgs dragModel =
     let
         viewArg index arg =
-            Arg.view dragModel arg & Focus.second => Element.map $= UpdateArgIndex index
+            Arg.view dragModel arg & Focus.second => Element.map $= ArgMsg index
     in
     List.indexedMap viewArg
 
@@ -128,6 +152,13 @@ viewName model =
 viewAddArg : Element Styles Variations Msg
 viewAddArg =
     Element.el Button [ center, paddingXY 4 0, Events.onClick AddArg ] (Element.text "+")
+
+
+viewBody : Expression.Model -> Element Styles Variations Msg
+viewBody expression =
+    Element.el NoStyle
+        [ paddingLeft 20 ]
+        (Element.map ExpressionMsg (Expression.view expression))
 
 
 
@@ -151,3 +182,8 @@ functionName f model =
 args : FieldSetter Model (ReorderList.Model Arg.Model)
 args f model =
     { model | args = f model.args }
+
+
+body : FieldSetter Model Expression.Model
+body f model =
+    { model | body = f model.body }
