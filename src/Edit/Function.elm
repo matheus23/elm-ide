@@ -5,6 +5,7 @@ import DragAndDrop
 import DragAndDrop.Divider as Divider
 import DragAndDrop.ReorderList as ReorderList
 import Edit.Arg as Arg
+import Edit.Expression as Expression
 import Edit.Type as Type
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
@@ -24,6 +25,7 @@ type alias Name =
 type alias Model =
     { name : Name
     , args : ReorderList.Model Arg.Model
+    , body : Expression.Model
     }
 
 
@@ -31,6 +33,7 @@ type Msg
     = UpdateName ContentEditable.Msg
     | ReorderListMsg ReorderList.Msg
     | ArgMsg Int Arg.Msg
+    | ExpressionMsg Expression.Msg
     | AddArg
 
 
@@ -65,6 +68,9 @@ update msg model =
         ArgMsg index argMsg ->
             model & args => ReorderList.elements => Focus.indexConcat index $= Arg.update argMsg
 
+        ExpressionMsg exprMsg ->
+            model & body $= Expression.update exprMsg
+
         AddArg ->
             model & args => ReorderList.elements $= (\args -> args ++ [ Arg.init "arg" Type.hole ])
 
@@ -87,6 +93,15 @@ subscriptions model =
 
 view : Model -> Element Styles Variations Msg
 view model =
+    Element.column NoStyle
+        [ spacing 4 ]
+        [ viewNameAndArgs model
+        , viewBody model.body
+        ]
+
+
+viewNameAndArgs : Model -> Element Styles Variations Msg
+viewNameAndArgs model =
     let
         wrapHighlightedDivider =
             Element.el DividerHighlight [ height (fill 1), paddingXY 4 0 ]
@@ -146,6 +161,13 @@ viewAddArg =
     Element.el Button [ center, paddingXY 4 0, Events.onClick AddArg ] (Element.text "+")
 
 
+viewBody : Expression.Model -> Element Styles Variations Msg
+viewBody expression =
+    Element.el NoStyle
+        [ paddingLeft 20 ]
+        (Element.map ExpressionMsg (Expression.view expression))
+
+
 
 -- Smart Constructors
 
@@ -167,3 +189,8 @@ functionName f model =
 args : FieldSetter Model (ReorderList.Model Arg.Model)
 args f model =
     { model | args = f model.args }
+
+
+body : FieldSetter Model Expression.Model
+body f model =
+    { model | body = f model.body }

@@ -55,6 +55,8 @@ update updateValue msg model =
 
         ReorderListMsg reorderListMsg ->
             -- TODO: set Focused to false on all inner elements upon reordering
+            -- ugh.. but how do i know that i _have_ to do that? My inner elements are
+            -- generic values, not Focusables...
             model & elements $= ReorderList.update reorderListMsg
 
 

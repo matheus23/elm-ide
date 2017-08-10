@@ -17,6 +17,11 @@ stringHash =
     toString >> Murmur3.hashString 1319285 >> toString
 
 
+equalsMaybe : a -> Maybe a -> Bool
+equalsMaybe a maybe =
+    Maybe.withDefault False (Maybe.map (\b -> a == b) maybe)
+
+
 zip : List a -> List b -> List ( a, b )
 zip =
     let
