@@ -37,6 +37,14 @@ type Msg
     | AddArg
 
 
+init : String -> List ( String, Type.Model ) -> Expression.Model -> Model
+init functionName args body =
+    { name = name functionName
+    , args = ReorderList.init (List.map (uncurry Arg.init) args)
+    , body = body
+    }
+
+
 
 -- Update
 

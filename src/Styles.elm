@@ -71,6 +71,11 @@ stylesheet =
             , Color.text (Color.rgb 80 80 80)
             , variation ActionbarButtonActive
                 [ Color.background Color.lightGrey ]
+            , hover
+                [ Color.border Color.lightBlue
+                , Border.all 1
+                , Border.rounded 4
+                ]
             ]
         , style ActionbarKey
             [ Border.all 1

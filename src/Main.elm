@@ -1,44 +1,41 @@
 module Main exposing (..)
 
-import DragAndDrop.ReorderList as ReorderList
-import Edit.Arg as Arg
 import Edit.Expression as Expression
 import Edit.Function as Function
+import Edit.Playground as Playground
 import Edit.Type as Type
 import Element exposing (Element)
 import Styles exposing (..)
 
 
-init : ( Function.Model, Cmd msg )
+init : ( Playground.Model, Cmd msg )
 init =
-    { name = Function.name "append"
-    , args =
-        ReorderList.init
-            [ Arg.init "arg1" Type.hole
-            , Arg.init "arg2" Type.hole
-            , Arg.init "record"
-                (Type.recordType True
+    Playground.init
+        (Function.init "append"
+            [ ( "arg1", Type.hole )
+            , ( "arg2", Type.hole )
+            , ( "record"
+              , Type.recordType True
                     [ ( "key", Type.int )
                     , ( "key2", Type.hole )
                     ]
-                )
+              )
             ]
-    , body =
-        Expression.application Expression.hole [ Expression.intLiteral 15, Expression.intLiteral 42 ]
-    }
+            (Expression.application Expression.hole [ Expression.intLiteral 15, Expression.intLiteral 42 ])
+        )
         ! []
 
 
-updateCmd : Function.Msg -> Function.Model -> ( Function.Model, Cmd msg )
+updateCmd : Playground.Msg -> Playground.Model -> ( Playground.Model, Cmd Playground.Msg )
 updateCmd msg model =
-    Function.update msg model ! []
+    Playground.update msg model
 
 
-main : Program Never Function.Model Function.Msg
+main : Program Never Playground.Model Playground.Msg
 main =
     styleElementsProgram
         { init = init
         , update = updateCmd
-        , subscriptions = Function.subscriptions
-        , view = Function.view
+        , subscriptions = Playground.subscriptions
+        , view = Playground.view
         }

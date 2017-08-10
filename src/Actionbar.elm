@@ -3,6 +3,7 @@ module Actionbar exposing (..)
 import Char
 import Element exposing (Element)
 import Element.Attributes exposing (..)
+import Element.Events as Events
 import Focus exposing (..)
 import FocusMore as Focus exposing (FieldSetter)
 import Keyboard
@@ -28,20 +29,9 @@ type alias Model action =
 type Msg action
     = Activate action
     | Deactivate action
-    | OtherKeyPressed Keyboard.KeyCode
-
-
-actionFromKeyCode : Model action -> (action -> Msg action) -> Keyboard.KeyCode -> Msg action
-actionFromKeyCode model makeMsg keyCode =
-    let
-        hasKeyCode actionModel =
-            actionModel.keyCode == keyCode
-    in
-    model.actionbuttons
-        |> List.filter hasKeyCode
-        |> List.head
-        |> Maybe.map (.actionId >> makeMsg)
-        |> Maybe.withDefault (OtherKeyPressed keyCode)
+    | PressKey Keyboard.KeyCode
+    | ReleaseKey Keyboard.KeyCode
+    | Toggle action
 
 
 actionModelInit : ( String, Char, actions ) -> ActionModel actions
@@ -66,34 +56,49 @@ init actionList =
 
 update : Msg action -> Model action -> Model action
 update msg model =
-    let
-        replaceNothingIfEqual value maybe =
-            case maybe of
-                Just sth ->
-                    if value == sth then
-                        Nothing
-                    else
-                        Just sth
-
-                Nothing ->
-                    Nothing
-    in
     case msg of
         Activate actionId ->
             model & activeAction .= Just actionId
 
         Deactivate actionId ->
-            model & activeAction $= replaceNothingIfEqual actionId
+            model & activeAction $= Util.replaceNothingIfEqual actionId
 
-        OtherKeyPressed _ ->
+        PressKey keyCode ->
+            model & activeAction .= actionFromKeyCode model keyCode
+
+        ReleaseKey keyCode ->
             model
+                |> Focus.when (model.activeAction == actionFromKeyCode model keyCode)
+                    (activeAction .= Nothing)
+
+        Toggle actionId ->
+            let
+                toggle activeActionId =
+                    if activeActionId == Just actionId then
+                        Nothing
+                    else
+                        Just actionId
+            in
+            model & activeAction $= toggle
+
+
+actionFromKeyCode : Model action -> Keyboard.KeyCode -> Maybe action
+actionFromKeyCode model keyCode =
+    let
+        hasKeyCode actionModel =
+            actionModel.keyCode == keyCode
+    in
+    model.actionbuttons
+        |> List.filter hasKeyCode
+        |> List.head
+        |> Maybe.map .actionId
 
 
 subscriptions : Model action -> Sub (Msg action)
 subscriptions model =
     Sub.batch
-        [ Keyboard.downs (actionFromKeyCode model Activate)
-        , Keyboard.ups (actionFromKeyCode model Deactivate)
+        [ Keyboard.downs PressKey
+        , Keyboard.ups ReleaseKey
         ]
 
 
@@ -104,7 +109,7 @@ subscriptions model =
 viewTo : (Msg action -> msg) -> Element Styles Variations msg -> Model action -> Element Styles Variations msg
 viewTo injectMsg elementUnder model =
     Element.row NoStyle
-        []
+        [ height (fill 1) ]
         [ Element.map injectMsg (view model)
         , Element.el NoStyle [ paddingLeft model.width ] elementUnder
         ]
@@ -116,22 +121,28 @@ view model =
         Element.column Actionbar
             [ spacing 2
             , width (px model.width)
+            , height (fill 1)
             ]
             (List.map (viewAction model.activeAction) model.actionbuttons)
 
 
 viewAction : Maybe action -> ActionModel action -> Element Styles Variations (Msg action)
 viewAction activeAction actionModel =
+    let
+        isActive =
+            Util.equalsMaybe actionModel.actionId activeAction
+    in
     Element.column ActionbarButton
         [ width (fill 1)
         , height (px 100)
         , padding 20
+        , spacing 10
         , justify
         , center
-        , spacing 10
         , toAttr (MultiTouch.onStart (always (Activate actionModel.actionId)))
         , toAttr (MultiTouch.onEnd (always (Deactivate actionModel.actionId)))
-        , vary ActionbarButtonActive (Util.equalsMaybe actionModel.actionId activeAction)
+        , Events.onClick (Toggle actionModel.actionId)
+        , vary ActionbarButtonActive isActive
         ]
         [ Element.el NoStyle
             [ center ]
@@ -173,26 +184,27 @@ activeAction f model =
 
 
 -- Test
+{-
+
+   loremipsum : String
+   loremipsum =
+       String.concat <|
+           List.repeat 10
+               "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet."
 
 
-loremipsum : String
-loremipsum =
-    String.concat <|
-        List.repeat 10
-            "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet."
+   type Actions
+       = Drag
+       | Add
+       | Remove
 
 
-type Actions
-    = Drag
-    | Add
-    | Remove
-
-
-main : Program Never (Model Actions) (Msg Actions)
-main =
-    styleElementsProgram
-        { init = init [ ( "Drag", 'D', Drag ), ( "Add", 'A', Add ), ( "Remove", 'R', Remove ) ] ! []
-        , update = \msg model -> update msg model ! []
-        , subscriptions = subscriptions
-        , view = viewTo identity (Element.text loremipsum)
-        }
+   main : Program Never (Model Actions) (Msg Actions)
+   main =
+       styleElementsProgram
+           { init = init [ ( "Drag", 'D', Drag ), ( "Add", 'A', Add ), ( "Remove", 'R', Remove ) ] ! []
+           , update = \msg model -> update msg model ! []
+           , subscriptions = subscriptions
+           , view = viewTo identity (Element.text loremipsum)
+           }
+-}

@@ -53,28 +53,6 @@ getIndex i =
     List.foldr orTry Nothing << List.indexedMap justOnEqual
 
 
-tightHtml : (msg -> model -> model) -> (model -> Html msg) -> model -> Html model
-tightHtml update view model =
-    let
-        applyUpdate msg =
-            update msg model
-    in
-    Html.map applyUpdate (view model)
-
-
-tightElement :
-    (msg -> model -> model)
-    -> (model -> Element style variation msg)
-    -> model
-    -> Element style variation model
-tightElement update view model =
-    let
-        applyUpdate msg =
-            update msg model
-    in
-    Element.map applyUpdate (view model)
-
-
 replaceIndex : Int -> a -> List a -> List a
 replaceIndex replacementIndex replacement list =
     let
@@ -85,21 +63,6 @@ replaceIndex replacementIndex replacement list =
                 element
     in
     List.indexedMap maybeReplace list
-
-
-elementList :
-    (model -> Element style variation model)
-    -> List model
-    -> List (Element style variation (List model))
-elementList view models =
-    let
-        updateModel index model =
-            replaceIndex index model models
-
-        viewModel index model =
-            Element.map (updateModel index) (view model)
-    in
-    List.indexedMap viewModel models
 
 
 styledText : style -> String -> Element style variation msg
@@ -117,21 +80,29 @@ wrapStyles styles elem =
     List.foldr (\style -> Element.el style []) elem styles
 
 
-hcenter : style -> Element style variation msg -> Element style variation msg
-hcenter style elem =
-    Element.row style [ center ] [ elem ]
-
-
-vcenter : style -> Element style variation msg -> Element style variation msg
-vcenter style elem =
-    Element.column style [ center ] [ elem ]
-
-
-centeredElement : style -> Element style variation msg -> Element style variation msg
-centeredElement style elem =
-    hcenter style (vcenter style elem)
-
-
 isJust : Maybe a -> Bool
 isJust =
     Maybe.withDefault False << Maybe.map (always True)
+
+
+replaceNothingIfEqual : a -> Maybe a -> Maybe a
+replaceNothingIfEqual value maybe =
+    case maybe of
+        Just sth ->
+            if value == sth then
+                Nothing
+            else
+                Just sth
+
+        Nothing ->
+            Nothing
+
+
+replaceJustIfNothing : Maybe a -> Maybe a -> Maybe a
+replaceJustIfNothing value maybe =
+    case maybe of
+        Nothing ->
+            value
+
+        _ ->
+            maybe

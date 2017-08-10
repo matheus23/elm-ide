@@ -5,7 +5,6 @@ import Element.Attributes exposing (contenteditable, property)
 import Element.Events exposing (on, onBlur, onFocus)
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Util
 
 
 type alias Model =
@@ -53,11 +52,6 @@ viewAttr attributes style model =
             ++ attributes
         )
         Element.empty
-
-
-tightView : style -> Model -> Element style variation Model
-tightView style =
-    Util.tightElement update (view style)
 
 
 innerHtmlDecoder : Decode.Decoder String
