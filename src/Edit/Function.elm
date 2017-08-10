@@ -1,6 +1,7 @@
 module Edit.Function exposing (..)
 
 import ContentEditable as ContentEditable
+import DividedList
 import DragAndDrop
 import DragAndDrop.Divider as Divider
 import DragAndDrop.ReorderList as ReorderList
@@ -13,7 +14,6 @@ import Element.Events as Events
 import Element.Keyed as Keyed
 import Focus exposing (..)
 import FocusMore as Focus exposing (FieldSetter)
-import Focusable
 import Styles exposing (..)
 import Util
 
@@ -24,7 +24,7 @@ type alias Name =
 
 type alias Model =
     { name : Name
-    , args : ReorderList.Model Arg.Model
+    , args : List Arg.Model
     , body : Expression.Model
     }
 
@@ -40,7 +40,7 @@ type Msg
 init : String -> List ( String, Type.Model ) -> Expression.Model -> Model
 init functionName args body =
     { name = name functionName
-    , args = ReorderList.init (List.map (uncurry Arg.init) args)
+    , args = List.map (uncurry Arg.init) args
     , body = body
     }
 
@@ -56,31 +56,34 @@ update msg model =
             model & functionName $= ContentEditable.update msg
 
         ReorderListMsg msg ->
-            let
-                ( newReorderList, maybeEvents ) =
-                    ReorderList.updateWithEvents msg model.args
+            {-
+               let
+                   ( newReorderList, maybeEvents ) =
+                       ReorderList.updateWithEvents msg model.args
 
-                justDropped =
-                    case maybeEvents of
-                        Just (DragAndDrop.SuccessfulDrop _ _) ->
-                            True
+                   justDropped =
+                       case maybeEvents of
+                           Just (DragAndDrop.SuccessfulDrop _ _) ->
+                               True
 
-                        _ ->
-                            False
-            in
+                           _ ->
+                               False
+               in
+               model
+                   |> (args .= newReorderList)
+                   |> Focus.when justDropped
+                       (args => ReorderList.elements => List.map => Focusable.focused .= False)
+            -}
             model
-                |> (args .= newReorderList)
-                |> Focus.when justDropped
-                    (args => ReorderList.elements => List.map => Focusable.focused .= False)
 
         ArgMsg index argMsg ->
-            model & args => ReorderList.elements => Focus.indexConcat index $= Arg.update argMsg
+            model & args => Focus.indexConcat index $= Arg.update argMsg
 
         ExpressionMsg exprMsg ->
             model & body $= Expression.update exprMsg
 
         AddArg ->
-            model & args => ReorderList.elements $= (\args -> args ++ [ Arg.init "arg" Type.hole ])
+            model & args $= (\args -> args ++ [ Arg.init "arg" Type.hole ])
 
 
 subscriptions : Model -> Sub Msg
@@ -90,8 +93,9 @@ subscriptions model =
             Sub.map (ArgMsg index) (Arg.subscriptions arg)
     in
     Sub.batch
-        [ Sub.map ReorderListMsg (ReorderList.subscriptions model.args)
-        , Sub.batch (List.indexedMap subscriptionForArg model.args.elements)
+        [ Sub.batch (List.indexedMap subscriptionForArg model.args)
+
+        --, Sub.map ReorderListMsg (ReorderList.subscriptions model.args)
         ]
 
 
@@ -111,37 +115,32 @@ view model =
 viewNameAndArgs : Model -> Element Styles Variations Msg
 viewNameAndArgs model =
     let
-        wrapHighlightedDivider =
-            Element.el DividerHighlight [ height (fill 1), paddingXY 4 0 ]
-
-        settings =
-            { nostyle = NoStyle
-            , dividerSize = 30
-            , orientation = Divider.Vertical
-            }
-
-        argElements =
-            ReorderList.viewKeyed settings ReorderListMsg (viewArgs model.args.dragModel) model.args
-
-        args =
-            List.intersperse arrow argElements
+        viewDivider elementsBefore elementsAfter =
+            if elementsAfter == 0 then
+                equalsSign
+            else if elementsBefore == 0 then
+                hasType
+            else
+                arrow
 
         arrow =
-            ( "arrow", wrapHighlightedDivider (Util.styledText Keyword "→") )
+            ( "arrow", Util.styledText Keyword "→" )
 
         hasType =
-            ( "hasType", wrapHighlightedDivider (Util.styledText Keyword ":") )
+            ( "hasType", Util.styledText Keyword ":" )
 
         equalsSign =
-            ( "equalsSign"
-            , Element.column NoStyle
-                []
-                [ viewAddArg
-                , Util.styledTextAttr Keyword [ alignBottom, padding 4 ] "="
-                ]
-            )
+            ( "equalsSign", Util.styledTextAttr Keyword [ alignBottom, padding 4 ] "=" )
     in
-    Keyed.row NoStyle [ spacing 10, padding 5 ] (viewName model :: hasType :: args ++ [ equalsSign ])
+    Element.row NoStyle
+        [ spacing 10, padding 5 ]
+        [ viewName model
+        , DividedList.viewKeyed NoStyle [ spacing 10 ] viewDivider (viewArgs DragAndDrop.init model.args)
+        ]
+
+
+
+--Keyed.row NoStyle [ spacing 10, padding 5 ] (viewName model :: hasType :: args ++ [ equalsSign ])
 
 
 viewArgs : DragAndDrop.Model Int Int -> List Arg.Model -> List ( String, Element Styles Variations Msg )
@@ -153,15 +152,13 @@ viewArgs dragModel =
     List.indexedMap viewArg
 
 
-viewName : Model -> ( String, Element Styles Variations Msg )
+viewName : Model -> Element Styles Variations Msg
 viewName model =
-    ( "FunctionName"
-    , Element.column NoStyle
+    Element.column NoStyle
         [ spacing 5 ]
         [ Element.map UpdateName (ContentEditable.view Identifier model.name)
         , Util.styledText Identifier model.name.liveContent
         ]
-    )
 
 
 viewAddArg : Element Styles Variations Msg
@@ -194,7 +191,7 @@ functionName f model =
     { model | name = f model.name }
 
 
-args : FieldSetter Model (ReorderList.Model Arg.Model)
+args : FieldSetter Model (List Arg.Model)
 args f model =
     { model | args = f model.args }
 

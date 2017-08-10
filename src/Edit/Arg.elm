@@ -85,7 +85,6 @@ view dragModel model =
         )
         [ Element.map UpdateType (Type.view model.itsType)
         , viewName model.name
-        , Element.el DragGrab [ center ] (Element.text ":::")
         ]
         |> Focus.when model.focused viewGadgets
     )
