@@ -4,8 +4,8 @@ import Element exposing (Element)
 import Element.Attributes exposing (..)
 import Focus exposing (..)
 import FocusMore as Focus exposing (FieldSetter)
-import Html exposing (Html)
 import Murmur3
+import Styles exposing (..)
 
 
 addKey : model -> a -> ( String, a )
@@ -156,3 +156,16 @@ onMaybe update maybeMsg =
 
         Nothing ->
             identity
+
+
+splitOverlay :
+    Element Styles Variations msg
+    -> Element Styles Variations msg
+    -> Element Styles Variations msg
+    -> Element Styles Variations msg
+splitOverlay overlayLeft overlayRight elem =
+    Element.el NoStyle [] elem
+        |> Element.within
+            [ Element.el NoStyle [ alignLeft, height (px 100), width (fill 0.5) ] overlayLeft
+            , Element.el NoStyle [ alignRight, height (px 100), width (fill 0.5) ] overlayRight
+            ]

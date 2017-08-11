@@ -1,7 +1,7 @@
 module Edit.GroupLit exposing (..)
 
-import DragAndDrop.Divider as Divider
-import DragAndDrop.ReorderList as ReorderList
+import DividedList
+import DragAndDrop
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
@@ -12,15 +12,15 @@ import Styles exposing (..)
 
 
 type alias Model value =
-    { elements : ReorderList.Model value
+    { elements : List value
     , oneline : Bool
+    , dragModel : DragAndDrop.Model Int Int
     }
 
 
 type Msg innerMsg
     = UpdateIndex Int innerMsg
     | FlipOneLine
-    | ReorderListMsg ReorderList.Msg
 
 
 type alias Settings =
@@ -32,7 +32,8 @@ type alias Settings =
 init : Bool -> List value -> Model value
 init oneline elements =
     { oneline = oneline
-    , elements = ReorderList.init elements
+    , elements = elements
+    , dragModel = DragAndDrop.init
     }
 
 
@@ -48,16 +49,10 @@ update :
 update updateValue msg model =
     case msg of
         UpdateIndex index valueMsg ->
-            model & elements => ReorderList.elements => Focus.indexConcat index $= updateValue valueMsg
+            model & elements => Focus.indexConcat index $= updateValue valueMsg
 
         FlipOneLine ->
             model & oneline $= not
-
-        ReorderListMsg reorderListMsg ->
-            -- TODO: set Focused to false on all inner elements upon reordering
-            -- ugh.. but how do i know that i _have_ to do that? My inner elements are
-            -- generic values, not Focusables...
-            model & elements $= ReorderList.update reorderListMsg
 
 
 subscriptions : (value -> Sub innerMsg) -> Model value -> Sub (Msg innerMsg)
@@ -67,8 +62,7 @@ subscriptions innerSub model =
             Sub.map (UpdateIndex index) (innerSub element)
     in
     Sub.batch
-        [ Sub.map ReorderListMsg (ReorderList.subscriptions model.elements)
-        , Sub.batch (List.indexedMap subscriptionForIndex model.elements.elements)
+        [ Sub.batch (List.indexedMap subscriptionForIndex model.elements)
         ]
 
 
@@ -84,24 +78,20 @@ view :
 view settings viewInner model =
     let
         viewElement index innerModel =
-            Element.row NoStyle
-                []
-                [ PlainElement.view (settings.prefixFor [ paddingRight 10 ] index)
-                , Element.map (UpdateIndex index) (viewInner innerModel)
-                ]
-
-        config =
-            { nostyle = NoStyle
-            , dividerSize = 40
-            , orientation =
-                if model.oneline then
-                    Divider.Vertical
-                else
-                    Divider.Horizontal
-            }
+            if model.oneline then
+                Element.map (UpdateIndex index) (viewInner innerModel)
+            else
+                Element.row NoStyle
+                    []
+                    [ PlainElement.view (settings.prefixFor [ paddingRight 10 ] index)
+                    , Element.map (UpdateIndex index) (viewInner innerModel)
+                    ]
 
         elementsRendered =
-            ReorderList.view config ReorderListMsg (List.indexedMap viewElement) model.elements
+            if model.oneline then
+                List.indexedMap viewElement model.elements
+            else
+                List.indexedMap viewElement model.elements ++ [ PlainElement.view settings.suffix ]
     in
     render settings model [ Events.onDoubleClick FlipOneLine ] elementsRendered
 
@@ -114,29 +104,20 @@ render :
     -> Element Styles Variations msg
 render settings model attributes elementsRendered =
     let
-        suffixElement =
-            PlainElement.el NoStyle lastBrackedPadding settings.suffix
-
-        lastBrackedPadding =
-            if model.oneline then
-                [ paddingLeft 10 ]
-            else
-                []
-
         combineElements attributes =
             if model.oneline then
                 Element.row NoStyle attributes
             else
                 Element.column NoStyle ([ spacing 4 ] ++ attributes)
     in
-    if List.isEmpty model.elements.elements then
+    if List.isEmpty model.elements then
         PlainElement.view <|
             Element.row NoStyle
                 [ spacing 10 ]
                 [ settings.prefixFor [] 0, settings.suffix ]
     else
         combineElements attributes
-            (elementsRendered ++ [ PlainElement.view suffixElement ])
+            elementsRendered
 
 
 plain :
@@ -145,14 +126,14 @@ plain :
     -> Model innerModel
     -> PlainElement Styles Variations
 plain settings plainInner model =
-    render settings model [] (List.map plainInner model.elements.elements)
+    render settings model [] (List.map plainInner model.elements)
 
 
 
 -- Lenses
 
 
-elements : FieldSetter (Model value) (ReorderList.Model value)
+elements : FieldSetter (Model value) (List value)
 elements f model =
     { model | elements = f model.elements }
 

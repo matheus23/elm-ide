@@ -4,7 +4,6 @@ import Edit.Expression as Expression
 import Edit.Function as Function
 import Edit.Playground as Playground
 import Edit.Type as Type
-import Element exposing (Element)
 import Styles exposing (..)
 
 
@@ -15,7 +14,7 @@ init =
             [ ( "arg1", Type.hole )
             , ( "arg2", Type.hole )
             , ( "record"
-              , Type.recordType True
+              , Type.recordType False
                     [ ( "key", Type.int )
                     , ( "key2", Type.hole )
                     ]

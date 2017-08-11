@@ -78,16 +78,9 @@ subscriptions model =
 
 view : Actionbar.Model -> Model -> ( String, Element Styles Variations Msg )
 view actionbar model =
-    let
-        attributes =
-            []
-    in
     ( model.name.content
     , Element.column NoStyle
-        ([ spacing 2
-         ]
-            ++ attributes
-        )
+        [ spacing 2 ]
         [ Element.map UpdateType (Type.view actionbar model.itsType)
         , viewName actionbar model.name
         ]

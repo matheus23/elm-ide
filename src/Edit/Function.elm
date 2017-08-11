@@ -138,13 +138,13 @@ viewNameAndArgs actionbar model =
                 (DragAndDrop.droppable model.dragModel DragAndDropMsg index)
 
         arrow index =
-            ( "arrow", wrap index (Util.styledText Keyword "→") )
+            ( "arrow", Util.styledText Keyword "→" )
 
         hasType index =
-            ( "hasType", wrap index (Util.styledText Keyword ":") )
+            ( "hasType", Util.styledText Keyword ":" )
 
         equalsSign index =
-            ( "equalsSign", wrap index (Util.styledTextAttr Keyword [ alignBottom ] "=") )
+            ( "equalsSign", Util.styledTextAttr Keyword [ alignBottom ] "=" )
     in
     Element.row NoStyle
         [ spacing 10, padding 5 ]
@@ -161,6 +161,16 @@ viewArgs actionbar dragModel =
 viewArg : Actionbar.Model -> DragAndDrop.Model Int Int -> Int -> Arg.Model -> ( String, Element Styles Variations Msg )
 viewArg actionbar dragModel index arg =
     let
+        overlay style index =
+            Element.el
+                (if DragAndDrop.isHoveringDroppableId index dragModel then
+                    style
+                 else
+                    NoStyle
+                )
+                (height (fill 1) :: DragAndDrop.droppable dragModel DragAndDropMsg index)
+                Element.empty
+
         ( key, argViewed ) =
             Arg.view actionbar arg & Focus.second => Element.map $= ArgMsg index
 
@@ -178,11 +188,20 @@ viewArg actionbar dragModel index arg =
                 Draggable
             else
                 NoStyle
+
+        wrap =
+            if DragAndDrop.isDragging dragModel then
+                Util.splitOverlay
+                    (overlay OverlayLeft index)
+                    (overlay OverlayRight (index + 1))
+            else
+                identity
     in
     ( key
-    , Element.el style
-        attributes
-        argViewed
+    , wrap <|
+        Element.el style
+            attributes
+            argViewed
     )
 
 

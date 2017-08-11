@@ -36,6 +36,8 @@ type Styles
     | TypeOptionList
       -- functions
     | DividerHighlight
+    | OverlayLeft
+    | OverlayRight
 
 
 
@@ -127,6 +129,16 @@ stylesheet =
         , style DividerHighlight
             [ Color.background (Color.rgb 255 251 233)
             , Style.prop "z-index" "-1"
+            ]
+        , style OverlayLeft
+            [ Style.prop "z-index" "1"
+            , Border.left 1
+            , Color.border Color.black
+            ]
+        , style OverlayRight
+            [ Style.prop "z-index" "100"
+            , Border.right 1
+            , Color.border Color.black
             ]
         ]
 
