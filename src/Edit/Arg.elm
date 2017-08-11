@@ -4,6 +4,7 @@ import ContentEditable as ContentEditable
 import DragAndDrop
 import DragAndDrop.Divider as Divider
 import DragAndDrop.ReorderList as ReorderList
+import Edit.Actionbar as Actionbar
 import Edit.Type as Type
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
@@ -75,24 +76,33 @@ subscriptions model =
 -- View
 
 
-view : DragAndDrop.Model Int Int -> Model -> ( String, Element Styles Variations Msg )
-view dragModel model =
+view : Actionbar.Model -> Model -> ( String, Element Styles Variations Msg )
+view actionbar model =
+    let
+        attributes =
+            []
+    in
     ( model.name.content
     , Element.column NoStyle
         ([ spacing 2
          ]
-            ++ Focusable.attributes FocusMsg
+            ++ attributes
         )
-        [ Element.map UpdateType (Type.view model.itsType)
-        , viewName model.name
+        [ Element.map UpdateType (Type.view actionbar model.itsType)
+        , viewName actionbar model.name
         ]
-        |> Focus.when model.focused viewGadgets
     )
 
 
-viewName : Name -> Element Styles Variations Msg
-viewName name =
-    Element.map UpdateName (ContentEditable.viewAttr [ alignBottom ] Identifier name)
+viewName : Actionbar.Model -> Name -> Element Styles Variations Msg
+viewName actionbar name =
+    Element.map UpdateName
+        (ContentEditable.viewAttr
+            [ alignBottom ]
+            Identifier
+            (not (Actionbar.anyActive actionbar))
+            name
+        )
 
 
 viewGadgets : Element Styles Variations Msg -> Element Styles Variations Msg

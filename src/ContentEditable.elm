@@ -10,17 +10,19 @@ import Json.Encode as Encode
 type alias Model =
     { liveContent : String
     , content : String
+    , focused : Bool
     }
 
 
 type Msg
     = UserInput String
     | Blur
+    | Focus
 
 
 create : String -> Model
 create content =
-    { content = content, liveContent = content }
+    { content = content, liveContent = content, focused = False }
 
 
 update : Msg -> Model -> Model
@@ -30,20 +32,29 @@ update msg model =
             { model | liveContent = newText }
 
         Blur ->
-            { model | content = model.liveContent }
+            { model
+                | content = model.liveContent
+                , focused = False
+            }
+
+        Focus ->
+            { model
+                | focused = True
+            }
 
 
 view : style -> Model -> Element style variation Msg
-view =
-    viewAttr []
+view style =
+    viewAttr [] style True
 
 
-viewAttr : List (Element.Attribute variation Msg) -> style -> Model -> Element style variation Msg
-viewAttr attributes style model =
+viewAttr : List (Element.Attribute variation Msg) -> style -> Bool -> Model -> Element style variation Msg
+viewAttr attributes style active model =
     Element.el style
-        ([ contenteditable True
+        ([ contenteditable (active || model.focused)
          , on "input" (Decode.map UserInput innerHtmlDecoder)
          , onBlur Blur
+         , onFocus Focus
 
          -- placing this here, instead of using Html.text
          -- fixes a "cannot read property 'replaceData' of undefined"-error

@@ -1,6 +1,7 @@
 module Edit.Association exposing (..)
 
 import ContentEditable as ContentEditable
+import Edit.Actionbar as Actionbar
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
@@ -60,11 +61,12 @@ subscriptions innerSubs model =
 
 view :
     (innerModel -> Element Styles Variations innerMsg)
+    -> Actionbar.Model
     -> Model innerModel
     -> Element Styles Variations (Msg innerMsg)
-view viewInner model =
+view viewInner actionbar model =
     render (Focusable.attributes UpdateFocus)
-        (Element.map UpdateKey << ContentEditable.view Identifier)
+        (Element.map UpdateKey << ContentEditable.viewAttr [] Identifier (not (Actionbar.anyActive actionbar)))
         (Element.map UpdateValue << viewInner)
         model
         |> (if model.focused then

@@ -34,6 +34,12 @@ type Msg action
     | Toggle action
 
 
+type Event action
+    = ActivateAction action
+    | SwitchToAction action
+    | DeactivateAction
+
+
 actionModelInit : ( String, Char, actions ) -> ActionModel actions
 actionModelInit ( actionText, keyChar, actionId ) =
     { actionId = actionId
@@ -54,32 +60,74 @@ init actionList =
 -- Update
 
 
-update : Msg action -> Model action -> Model action
-update msg model =
+forceAction : Maybe action -> action -> Maybe (Event action)
+forceAction activeAction forcedAction =
+    if Util.isJust activeAction then
+        Just (SwitchToAction forcedAction)
+    else
+        Just (ActivateAction forcedAction)
+
+
+eventFromMessage : Msg action -> Model action -> Maybe (Event action)
+eventFromMessage msg model =
     case msg of
         Activate actionId ->
-            model & activeAction .= Just actionId
+            forceAction model.activeAction actionId
 
         Deactivate actionId ->
-            model & activeAction $= Util.replaceNothingIfEqual actionId
+            if model.activeAction == Just actionId then
+                Just DeactivateAction
+            else
+                Nothing
 
         PressKey keyCode ->
-            model & activeAction .= actionFromKeyCode model keyCode
+            actionFromKeyCode model keyCode
+                |> Maybe.andThen (forceAction model.activeAction)
 
         ReleaseKey keyCode ->
-            model
-                |> Focus.when (model.activeAction == actionFromKeyCode model keyCode)
-                    (activeAction .= Nothing)
+            if model.activeAction == actionFromKeyCode model keyCode && Util.isJust model.activeAction then
+                Just DeactivateAction
+            else
+                Nothing
 
         Toggle actionId ->
-            let
-                toggle activeActionId =
-                    if activeActionId == Just actionId then
-                        Nothing
-                    else
-                        Just actionId
-            in
-            model & activeAction $= toggle
+            if model.activeAction == Just actionId then
+                Just DeactivateAction
+            else if Util.isJust model.activeAction then
+                Just (SwitchToAction actionId)
+            else
+                Nothing
+
+
+updateFromEvent : Event action -> Model action -> Model action
+updateFromEvent msg model =
+    case msg of
+        SwitchToAction actionId ->
+            model & activeAction .= Just actionId
+
+        ActivateAction actionId ->
+            model & activeAction .= Just actionId
+
+        DeactivateAction ->
+            model & activeAction .= Nothing
+
+
+updateWithEvents : Msg action -> Model action -> ( Model action, Maybe (Event action) )
+updateWithEvents msg model =
+    let
+        maybeEvent =
+            eventFromMessage msg model
+    in
+    ( maybeEvent
+        |> Maybe.map (\event -> updateFromEvent event model)
+        |> Maybe.withDefault model
+    , maybeEvent
+    )
+
+
+update : Msg action -> Model action -> Model action
+update msg model =
+    Tuple.first (updateWithEvents msg model)
 
 
 actionFromKeyCode : Model action -> Keyboard.KeyCode -> Maybe action

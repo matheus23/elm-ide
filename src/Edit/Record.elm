@@ -9,6 +9,7 @@ module Edit.Record exposing (..)
 -- }
 -- (the _s are going to be Edit.Associations then)
 
+import Edit.Actionbar as Actionbar
 import Edit.Association as Association
 import Edit.GroupLit as GroupLit
 import Element as Element exposing (Element)
@@ -49,10 +50,11 @@ subscriptions innerSubs =
 
 view :
     (innerModel -> Element Styles Variations innerMsg)
+    -> Actionbar.Model
     -> Model innerModel
     -> Element Styles Variations (Msg innerMsg)
-view viewInner model =
-    GroupLit.view groupLitSettings (Association.view viewInner) model
+view viewInner actionbar model =
+    GroupLit.view groupLitSettings (Association.view viewInner actionbar) model
 
 
 groupLitSettings : GroupLit.Settings

@@ -1,17 +1,16 @@
 module Edit.Function exposing (..)
 
+import Actionbar as AB exposing (Event(DeactivateAction))
 import ContentEditable as ContentEditable
 import DividedList
 import DragAndDrop
-import DragAndDrop.Divider as Divider
-import DragAndDrop.ReorderList as ReorderList
+import Edit.Actionbar as Actionbar
 import Edit.Arg as Arg
 import Edit.Expression as Expression
 import Edit.Type as Type
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
 import Element.Events as Events
-import Element.Keyed as Keyed
 import Focus exposing (..)
 import FocusMore as Focus exposing (FieldSetter)
 import Styles exposing (..)
@@ -26,14 +25,16 @@ type alias Model =
     { name : Name
     , args : List Arg.Model
     , body : Expression.Model
+    , dragModel : DragAndDrop.Model Int Int
     }
 
 
 type Msg
     = UpdateName ContentEditable.Msg
-    | ReorderListMsg ReorderList.Msg
     | ArgMsg Int Arg.Msg
+    | DragAndDropMsg (DragAndDrop.Msg Int Int)
     | ExpressionMsg Expression.Msg
+    | ActionbarEvent Actionbar.Event
     | AddArg
 
 
@@ -42,6 +43,7 @@ init functionName args body =
     { name = name functionName
     , args = List.map (uncurry Arg.init) args
     , body = body
+    , dragModel = DragAndDrop.init
     }
 
 
@@ -55,35 +57,37 @@ update msg model =
         UpdateName msg ->
             model & functionName $= ContentEditable.update msg
 
-        ReorderListMsg msg ->
-            {-
-               let
-                   ( newReorderList, maybeEvents ) =
-                       ReorderList.updateWithEvents msg model.args
-
-                   justDropped =
-                       case maybeEvents of
-                           Just (DragAndDrop.SuccessfulDrop _ _) ->
-                               True
-
-                           _ ->
-                               False
-               in
-               model
-                   |> (args .= newReorderList)
-                   |> Focus.when justDropped
-                       (args => ReorderList.elements => List.map => Focusable.focused .= False)
-            -}
-            model
-
         ArgMsg index argMsg ->
             model & args => Focus.indexConcat index $= Arg.update argMsg
+
+        DragAndDropMsg msg ->
+            let
+                ( newDragModel, maybeEvent ) =
+                    DragAndDrop.updateWithEvents True msg model.dragModel
+
+                applyEvent =
+                    case maybeEvent of
+                        Just (DragAndDrop.SuccessfulDrop dragInd dropInd) ->
+                            Util.moveByIndex dragInd dropInd
+
+                        _ ->
+                            identity
+            in
+            model
+                |> (dragModel .= newDragModel)
+                |> (args $= applyEvent)
 
         ExpressionMsg exprMsg ->
             model & body $= Expression.update exprMsg
 
         AddArg ->
             model & args $= (\args -> args ++ [ Arg.init "arg" Type.hole ])
+
+        ActionbarEvent event ->
+            if event == DeactivateAction then
+                model & dragModel $= DragAndDrop.update DragAndDrop.StopDragging
+            else
+                model
 
 
 subscriptions : Model -> Sub Msg
@@ -94,8 +98,7 @@ subscriptions model =
     in
     Sub.batch
         [ Sub.batch (List.indexedMap subscriptionForArg model.args)
-
-        --, Sub.map ReorderListMsg (ReorderList.subscriptions model.args)
+        , Sub.map DragAndDropMsg (DragAndDrop.subscriptions model.dragModel)
         ]
 
 
@@ -103,53 +106,84 @@ subscriptions model =
 -- View
 
 
-view : Model -> Element Styles Variations Msg
-view model =
+view : Actionbar.Model -> Model -> Element Styles Variations Msg
+view actionbar model =
     Element.column NoStyle
         [ spacing 4 ]
-        [ viewNameAndArgs model
+        [ viewNameAndArgs actionbar model
         , viewBody model.body
         ]
 
 
-viewNameAndArgs : Model -> Element Styles Variations Msg
-viewNameAndArgs model =
+viewNameAndArgs : Actionbar.Model -> Model -> Element Styles Variations Msg
+viewNameAndArgs actionbar model =
     let
         viewDivider elementsBefore elementsAfter =
             if elementsAfter == 0 then
-                equalsSign
+                equalsSign elementsBefore
             else if elementsBefore == 0 then
-                hasType
+                hasType elementsBefore
             else
-                arrow
+                arrow elementsBefore
 
-        arrow =
-            ( "arrow", Util.styledText Keyword "→" )
+        wrap index =
+            Element.el
+                (if DragAndDrop.isHoveringDroppableId index model.dragModel then
+                    OverDraggable
+                 else if DragAndDrop.isDragging model.dragModel then
+                    Draggable
+                 else
+                    NoStyle
+                )
+                (DragAndDrop.droppable model.dragModel DragAndDropMsg index)
 
-        hasType =
-            ( "hasType", Util.styledText Keyword ":" )
+        arrow index =
+            ( "arrow", wrap index (Util.styledText Keyword "→") )
 
-        equalsSign =
-            ( "equalsSign", Util.styledTextAttr Keyword [ alignBottom, padding 4 ] "=" )
+        hasType index =
+            ( "hasType", wrap index (Util.styledText Keyword ":") )
+
+        equalsSign index =
+            ( "equalsSign", wrap index (Util.styledTextAttr Keyword [ alignBottom ] "=") )
     in
     Element.row NoStyle
         [ spacing 10, padding 5 ]
         [ viewName model
-        , DividedList.viewKeyed NoStyle [ spacing 10 ] viewDivider (viewArgs DragAndDrop.init model.args)
+        , DividedList.viewKeyed NoStyle [ spacing 10 ] viewDivider (viewArgs actionbar model.dragModel model.args)
         ]
 
 
+viewArgs : Actionbar.Model -> DragAndDrop.Model Int Int -> List Arg.Model -> List ( String, Element Styles Variations Msg )
+viewArgs actionbar dragModel =
+    List.indexedMap (viewArg actionbar dragModel)
 
---Keyed.row NoStyle [ spacing 10, padding 5 ] (viewName model :: hasType :: args ++ [ equalsSign ])
 
-
-viewArgs : DragAndDrop.Model Int Int -> List Arg.Model -> List ( String, Element Styles Variations Msg )
-viewArgs dragModel =
+viewArg : Actionbar.Model -> DragAndDrop.Model Int Int -> Int -> Arg.Model -> ( String, Element Styles Variations Msg )
+viewArg actionbar dragModel index arg =
     let
-        viewArg index arg =
-            Arg.view dragModel arg & Focus.second => Element.map $= ArgMsg index
+        ( key, argViewed ) =
+            Arg.view actionbar arg & Focus.second => Element.map $= ArgMsg index
+
+        attributes =
+            []
+                |> Util.appendWhen (Actionbar.actionActive Actionbar.Drag actionbar)
+                    (DragAndDrop.draggableInstant dragModel DragAndDropMsg index)
+
+        style =
+            if DragAndDrop.isDraggingId index dragModel then
+                Dragging
+            else if DragAndDrop.isHoveringDraggableId index dragModel then
+                OverDraggable
+            else if Actionbar.actionActive Actionbar.Drag actionbar && not (DragAndDrop.isDragging dragModel) then
+                Draggable
+            else
+                NoStyle
     in
-    List.indexedMap viewArg
+    ( key
+    , Element.el style
+        attributes
+        argViewed
+    )
 
 
 viewName : Model -> Element Styles Variations Msg
@@ -199,3 +233,8 @@ args f model =
 body : FieldSetter Model Expression.Model
 body f model =
     { model | body = f model.body }
+
+
+dragModel : FieldSetter Model (DragAndDrop.Model Int Int)
+dragModel f model =
+    { model | dragModel = f model.dragModel }

@@ -1,16 +1,13 @@
 module Edit.Playground exposing (..)
 
-import DragAndDrop.ReorderList as ReorderList
 import Edit.Actionbar as Actionbar
-import Edit.Association as Association
-import Edit.Expression as Expression
 import Edit.Function as Function
-import Edit.Type as Type
 import Element exposing (Element)
 import Element.Attributes exposing (..)
 import Focus exposing (..)
 import FocusMore as Focus exposing (FieldSetter)
 import Styles exposing (..)
+import Util
 
 
 -- Model
@@ -45,7 +42,15 @@ update msg model =
             (model & function $= Function.update msg) ! []
 
         ActionbarMsg msg ->
-            (model & actionbar $= Actionbar.update msg) ! []
+            let
+                ( newActionbar, maybeActionbarEvent ) =
+                    Actionbar.updateWithEvents msg model.actionbar
+            in
+            (model
+                |> (actionbar .= newActionbar)
+                |> (function $= Util.onMaybe (Function.update << Function.ActionbarEvent) maybeActionbarEvent)
+            )
+                ! []
 
 
 subscriptions : Model -> Sub Msg
@@ -64,7 +69,10 @@ view : Model -> Element Styles Variations Msg
 view model =
     Actionbar.viewTo ActionbarMsg
         (Element.map FunctionMsg
-            (Element.el NoStyle [ paddingLeft 10 ] (Function.view model.function))
+            (Element.el NoStyle
+                [ paddingLeft 10 ]
+                (Function.view model.actionbar model.function)
+            )
         )
         model.actionbar
 

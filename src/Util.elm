@@ -3,6 +3,7 @@ module Util exposing (..)
 import Element exposing (Element)
 import Element.Attributes exposing (..)
 import Focus exposing (..)
+import FocusMore as Focus exposing (FieldSetter)
 import Html exposing (Html)
 import Murmur3
 
@@ -65,6 +66,37 @@ replaceIndex replacementIndex replacement list =
     List.indexedMap maybeReplace list
 
 
+moveByIndex : Int -> Int -> List a -> List a
+moveByIndex fromIndex toIndex list =
+    Maybe.withDefault list
+        (Maybe.map
+            (\elem -> applyMove fromIndex toIndex elem list)
+            (getIndex fromIndex list)
+        )
+
+
+applyMove : Int -> Int -> a -> List a -> List a
+applyMove dragIndex dropIndex draggedElem list =
+    let
+        removeIndex i =
+            Focus.indexConcat i .= []
+
+        insertIndex i toInsert list =
+            if i == List.length list then
+                list ++ [ toInsert ]
+            else
+                list & Focus.indexConcat i $= (\e -> [ toInsert, e ])
+    in
+    -- Dropping above or below the dragged element has no effect
+    if dragIndex == dropIndex || dragIndex + 1 == dropIndex then
+        list
+        -- Be careful to not alter indices by removing or inserting an element
+    else if dragIndex > dropIndex then
+        list |> removeIndex dragIndex |> insertIndex dropIndex draggedElem
+    else
+        list |> insertIndex dropIndex draggedElem |> removeIndex dragIndex
+
+
 styledText : style -> String -> Element style variation msg
 styledText style text =
     Element.el style [] (Element.text text)
@@ -106,3 +138,21 @@ replaceJustIfNothing value maybe =
 
         _ ->
             maybe
+
+
+appendWhen : Bool -> List a -> List a -> List a
+appendWhen predicate toAppend list =
+    if predicate then
+        list ++ toAppend
+    else
+        list
+
+
+onMaybe : (a -> b -> b) -> Maybe a -> b -> b
+onMaybe update maybeMsg =
+    case maybeMsg of
+        Just msg ->
+            update msg
+
+        Nothing ->
+            identity

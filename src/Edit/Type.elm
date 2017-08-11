@@ -1,5 +1,6 @@
 module Edit.Type exposing (..)
 
+import Edit.Actionbar as Actionbar
 import Edit.Record as Record
 import Element as Element exposing (Element)
 import Element.Attributes exposing (..)
@@ -63,14 +64,17 @@ subscriptions model =
 -- View
 
 
-view : Model -> Element Styles Variations Msg
-view model =
+view : Actionbar.Model -> Model -> Element Styles Variations Msg
+view actionbar model =
     case model.typeCase of
         Hole ->
             renderTypeHole
-                (Focusable.attributes UpdateFocus)
+                ([]
+                    |> Util.appendWhen (not (Actionbar.anyActive actionbar))
+                        (Focusable.attributes UpdateFocus)
+                )
                 |> Element.below
-                    [ Element.when model.focused <|
+                    [ Element.when (model.focused && not (Actionbar.anyActive actionbar)) <|
                         viewTypeOptionList
                             [ int
                             , recordType False
@@ -86,7 +90,7 @@ view model =
         RecordType record ->
             Focusable.wrapFocusable NoStyle
                 UpdateFocus
-                (Element.map UpdateRecord (Record.view view record))
+                (Element.map UpdateRecord (Record.view (view actionbar) actionbar record))
 
 
 viewTypeOption : Model -> Element Styles Variations Msg

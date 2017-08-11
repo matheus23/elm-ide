@@ -18,7 +18,10 @@ type Styles
     = NoStyle
       -- general
     | Button
-    | DragGrab
+      -- Drag and drop
+    | OverDraggable
+    | Draggable
+    | Dragging
       -- Actionbar
     | Actionbar
     | ActionbarButton
@@ -42,19 +45,23 @@ type Styles
 stylesheet : StyleSheet Styles Variations
 stylesheet =
     Style.styleSheet
-        [ style NoStyle
-            []
+        [ style NoStyle []
 
         -- general
         , style Button
             [ Style.prop "z-index" "2"
             , Style.prop "cursor" "pointer"
             , Color.background Color.lightGrey
-            , hover [ Color.background (Color.rgb 200 230 255) ]
             ]
-        , style DragGrab
-            [ Color.text Color.darkGrey
-            , Style.prop "cursor" "grab"
+        , style OverDraggable
+            [ Style.prop "cursor" "grab"
+            , Color.background (Color.rgb 200 230 255)
+            ]
+        , style Draggable
+            [ Color.background (Color.rgb 240 240 240)
+            ]
+        , style Dragging
+            [ Color.text Color.lightGrey
             ]
 
         -- ActionBar

@@ -16,6 +16,10 @@ type alias Msg =
     Actionbar.Msg Action
 
 
+type alias Event =
+    Actionbar.Event Action
+
+
 type Action
     = Drag
     | Add
@@ -34,12 +38,36 @@ init =
 
 
 
+-- Querying
+
+
+anyActive : Model -> Bool
+anyActive model =
+    case model.activeAction of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
+
+
+actionActive : Action -> Model -> Bool
+actionActive action model =
+    Just action == model.activeAction
+
+
+
 -- Update
 
 
 update : Msg -> Model -> Model
 update =
     Actionbar.update
+
+
+updateWithEvents : Msg -> Model -> ( Model, Maybe Event )
+updateWithEvents =
+    Actionbar.updateWithEvents
 
 
 subscriptions : Model -> Sub Msg
